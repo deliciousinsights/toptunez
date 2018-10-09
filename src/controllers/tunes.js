@@ -1,3 +1,4 @@
+import errors from 'restify-errors'
 import restify from 'restify'
 import semver from 'semver'
 
@@ -45,5 +46,19 @@ async function listTunes(req, res) {
 }
 
 async function voteOnTune(req, res) {
-  res.send(201, { score: 1, voteCount: 1 })
+  const { tuneId } = req.params
+  let tune = await Tune.findById(tuneId)
+
+  if (!tune) {
+    return new errors.ResourceNotFoundError(
+      {
+        info: { faultyId: tuneId },
+      },
+      'The tune you want to vote for cannot be found'
+    )
+  }
+
+  const { comment, offset } = req.body
+  tune = await tune.vote({ comment, offset })
+  res.noCache().send(201, { score: tune.score, voteCount: tune.votes.length })
 }

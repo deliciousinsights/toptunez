@@ -11,6 +11,13 @@ const tuneSchema = new mongoose.Schema(
     score: { type: Number, index: true, default: 0 },
     title: { type: String, required: true },
     url: { type: String, match: urlRegex({ exact: true }) },
+    votes: [
+      {
+        comment: String,
+        createdAt: { type: Date, default: Date.now },
+        offset: { type: Number, required: true, min: -1, max: 1 },
+      },
+    ],
   },
   {
     collation: { locale: 'en_US', strength: 1 },
@@ -23,6 +30,7 @@ tuneSchema.index(
   { name: 'search', weights: { title: 10, artist: 5, album: 1 } }
 )
 tuneSchema.statics.search = search
+tuneSchema.methods.vote = vote
 
 const Tune = connection.model('Tune', tuneSchema)
 
@@ -57,4 +65,24 @@ async function search({
     links,
     tunes: await scope,
   }
+}
+
+function vote({ offset, comment }) {
+  offset = Math.sign(Number(offset) || 0)
+  comment = String(comment || '').trim()
+
+  if (offset === 0) {
+    return this
+  }
+
+  const vote = { offset }
+  if (comment) {
+    vote.comment = comment
+  }
+
+  return Tune.findOneAndUpdate(
+    { _id: this.id },
+    { $inc: { score: offset }, $push: { votes: vote } },
+    { new: true }
+  )
 }
