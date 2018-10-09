@@ -1,0 +1,5 @@
+{
+  "verbose": false,
+  "ignore": ["jest", "node_modules", "src/**/*.spec.js"],
+  "watch": "*.js"
+}
