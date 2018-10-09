@@ -5,9 +5,15 @@
 # @name createTune
 POST {{host}}/tunes
 
-### Tune listing
+### Tune listing -- sortBy ignored (< v1.2>
 
-GET {{host}}/tunes
+GET {{host}}/tunes?sortBy=title
+Accept-Version: 1.0
+
+### Tune listing -- sortBy used (v1.2+>
+
+GET {{host}}/tunes?sortBy=title
+Accept-Version: ^1.2
 
 ### Vote on tune
 

@@ -17,6 +17,27 @@ describe('Tunes controller', () => {
         })
     })
 
+    it('should retain recent-first ordering if not on v1.2+', () => {
+      return request(app)
+        .get(app.router.render('listTunes', {}, { sortBy: 'title' }))
+        .expect(200)
+        .then((res) => {
+          const titles = res.body.tunes.map(({ title }) => title)
+          expect(titles).to.deep.equal(['World Falls Apart', 'Kenia', 'Sky'])
+        })
+    })
+
+    it('should honor `sortBy` argument if on v1.2+', () => {
+      return request(app)
+        .get(app.router.render('listTunes', {}, { sortBy: 'title' }))
+        .set('Accept-Version', '^1.2')
+        .expect(200)
+        .then((res) => {
+          const titles = res.body.tunes.map(({ title }) => title)
+          expect(titles).to.deep.equal(['World Falls Apart', 'Sky', 'Kenia'])
+        })
+    })
+
     it('should provide earlier links when beyond page 1', () => {
       const expectedLinks = {
         first: app.router.render('listTunes', {}, { page: 1, pageSize: 1 }),
