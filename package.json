@@ -1,0 +1,122 @@
+{
+  "name": "toptunez",
+  "version": "1.0.0",
+  "description": "A demo music recommendation API for Delicious Insights’ Node.js training, 2018 Edition",
+  "scripts": {
+    "lint": "eslint src",
+    "start": "node src/server.js",
+    "test": "cross-env NODE_ENV=test jest",
+    "test:watch": "npm test -- --watch"
+  },
+  "engines": {
+    "node": ">=8",
+    "npm": ">=6"
+  },
+  "keywords": [
+    "node",
+    "demo",
+    "music",
+    "mongoose",
+    "rest",
+    "api"
+  ],
+  "author": "Christophe Porteneuve <christophe@delicious-insights.com> (https://delicious-insights.com/)",
+  "license": "MIT",
+  "eslintConfig": {
+    "extends": [
+      "standard",
+      "prettier",
+      "plugin:import/errors"
+    ],
+    "plugins": [
+      "prettier",
+      "import"
+    ],
+    "rules": {
+      "no-irregular-whitespace": 0
+    },
+    "env": {
+      "commonjs": true,
+      "es6": true,
+      "jest": true,
+      "node": true
+    }
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ],
+    "coverageReporters": [
+      "html",
+      "lcov",
+      "text"
+    ],
+    "notify": true,
+    "testEnvironment": "node",
+    "transform": {},
+    "watchPlugins": [
+      "jest-watch-typeahead/filename",
+      "jest-watch-typeahead/testname",
+      [
+        "jest-watch-toggle-config",
+        {
+          "setting": "verbose"
+        }
+      ]
+    ]
+  },
+  "prettier": {
+    "arrowParens": "always",
+    "jsxSingleQuote": true,
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
+  "dependencies": {
+    "@saeris/graphql-scalars": "^1.3.3",
+    "apollo-server": "^2.9.16",
+    "bunyan": "^1.8.12",
+    "chalk": "^3.0.0",
+    "dotenv-safe": "^8.2.0",
+    "email-regex": "^4.0.0",
+    "graphql": "^14.5.8",
+    "graphql-depth-limit": "^1.1.0",
+    "graphql-validation-complexity": "^0.2.5",
+    "jsonwebtoken": "^8.5.1",
+    "lodash.merge": "^4.6.2",
+    "mongoose": "^5.8.7",
+    "mongoose-pii": "^1.2.3",
+    "node-restify-validation": "^1.3.0",
+    "otplib": "^11.0.1",
+    "qrcode": "^1.4.4",
+    "restify": "^8.5.1",
+    "restify-cors-middleware": "^1.1.1",
+    "restify-errors": "^8.0.2",
+    "restify-jwt-community": "^1.1.2",
+    "serverless-http": "^2.3.0",
+    "url-regex": "^5.0.0"
+  },
+  "devDependencies": {
+    "apollo": "^2.21.3",
+    "cross-env": "^6.0.3",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.9.0",
+    "eslint-config-standard": "^14.1.0",
+    "eslint-plugin-import": "^2.20.0",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-prettier": "^3.1.2",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "import-sort-style-delicious": "^1.0.2",
+    "jest": "^24.9.0",
+    "jest-watch-toggle-config": "^1.0.2",
+    "jest-watch-typeahead": "^0.4.2",
+    "mongodb-memory-server": "^6.2.1",
+    "nodemon": "^2.0.2",
+    "now": "^16.7.3",
+    "prettier": "^1.19.1",
+    "serverless": "^1.61.0",
+    "serverless-offline": "^5.12.1",
+    "supertest": "^4.0.2"
+  }
+}
