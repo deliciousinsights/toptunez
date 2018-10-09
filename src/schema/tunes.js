@@ -6,15 +6,72 @@ import Tune from '../db/Tune.js'
 // --------
 
 const typeDefs = gql`
+  type Tune {
+    id: ID
+    album: String
+    artist: String!
+    createdAt: DateTime!
+    score: Int!
+    title: String!
+    url: URL
+    votes: [TuneVote!]!
+  }
+
+  type TuneVote {
+    comment: String
+    createdAt: DateTime!
+    direction: TuneVoteDirection!
+  }
+
+  enum TuneVoteDirection {
+    UPVOTE
+    DOWNVOTE
+  }
+
+  enum TuneSort {
+    RECENT_FIRST
+    OLDEST_FIRST
+    ALBUM_ASC
+    ALBUM_DESC
+    ARTIST_ASC
+    ARTIST_DESC
+    SCORE_ASC
+    SCORE_DESC
+    TITLE_ASC
+    TITLE_DESC
+  }
+
   type Query {
-    fixme: String
+    allTunes(
+      filter: String
+      page: Int = 1
+      pageSize: Int = 10
+      sorting: TuneSort = RECENT_FIRST
+    ): [Tune!]!
   }
 `
 
 // Resolvers
 // ---------
 
-const resolvers = {}
+const resolvers = {
+  Query: { allTunes },
+  TuneVote: {
+    direction(vote) {
+      return vote.offset > 0 ? 'UPVOTE' : 'DOWNVOTE'
+    },
+  },
+}
+
+async function allTunes(root, { filter, page, pageSize, sorting }) {
+  const { tunes } = await Tune.search({
+    filter,
+    page,
+    pageSize,
+    sorting: mapTuneSorting(sorting),
+  })
+  return tunes
+}
 
 export default { typeDefs, resolvers }
 
