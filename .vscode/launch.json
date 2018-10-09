@@ -35,6 +35,54 @@
       "request": "attach",
       "name": "Se connecter au serverless local",
       "processId": "${command:PickProcess}"
+    },
+    // Permet le débogage de nos tests
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Déboguer les tests",
+      "runtimeArgs": [
+        "--experimental-vm-modules",
+        "--experimental-json-modules",
+        "--no-warnings"
+      ],
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--no-cache",
+      ],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "NODE_ENV": "test",
+        "CI": "true"
+      },
+      "disableOptimisticBPs": true
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Déboguer le fichier de tests courant",
+      "runtimeArgs": [
+        "--experimental-vm-modules",
+        "--experimental-json-modules",
+        "--no-warnings"
+      ],
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--no-cache",
+        "--testPathPattern=${fileBasenameNoExtension}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "NODE_ENV": "test",
+        "CI": "true"
+      },
+      "disableOptimisticBPs": true
     }
   ]
 }
