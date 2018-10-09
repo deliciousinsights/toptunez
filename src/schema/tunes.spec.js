@@ -18,9 +18,37 @@ describe('Tunes GraphQL schema', () => {
         await Tune.insertMany(TUNES)
       })
 
-      it.todo('should order recent-first by default')
+      it('should order recent-first by default', async () => {
+        const { allTunes } = await run(gql`
+          {
+            allTunes {
+              title
+            }
+          }
+        `)
 
-      it.todo('should honor sorting')
+        expect(allTunes).toEqual([
+          { title: 'World Falls Apart' },
+          { title: 'Kenia' },
+          { title: 'Sky' },
+        ])
+      })
+
+      it('should honor sorting', async () => {
+        const { allTunes } = await run(gql`
+          {
+            allTunes(sorting: SCORE_DESC) {
+              title
+            }
+          }
+        `)
+
+        expect(allTunes).toEqual([
+          { title: 'World Falls Apart' },
+          { title: 'Sky' },
+          { title: 'Kenia' },
+        ])
+      })
     })
   })
 
