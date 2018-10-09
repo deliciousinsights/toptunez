@@ -48,6 +48,7 @@
   "mocha": {
     "forbid-only": true,
     "parallel": true,
+    "require": "test/mongodb-memory-hooks.mjs",
     "spec": "src/**/*.spec.js",
     "watch-files": "src/**/*.js"
   },
