@@ -6,6 +6,8 @@
   "description": "A demo music recommendation API for Delicious Insights’ Node.js training, 2018 Edition",
   "scripts": {
     "dev": "nodemon src/server.js",
+    "graphql": "node --no-warnings src/graphql-server.js",
+    "graphql:dev": "nodemon src/graphql-server.js",
     "lint": "eslint src",
     "start": "node --no-warnings src/server.js",
     "test": "cross-env NODE_ENV=test NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest",
@@ -89,6 +91,9 @@
     ".js": {
       "style": "delicious"
     }
+  },
+  "graphql": {
+    "schema": "http://localhost:3001"
   },
   "dependencies": {
     "@apollo/server": "^4.9.3",

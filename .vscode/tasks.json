@@ -10,6 +10,16 @@
     },
     {
       "type": "npm",
+      "script": "graphql",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "graphql:dev",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
       "script": "start",
       "problemMatcher": []
     },
