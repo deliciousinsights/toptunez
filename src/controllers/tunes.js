@@ -1,9 +1,7 @@
 import restify from 'restify'
 import semver from 'semver'
 
-import { getPageDescriptors } from '../util/pagination.js'
 import Tune from '../db/Tune.js'
-import TUNES from '../../fixtures/tunes.js'
 
 let router
 
@@ -29,20 +27,13 @@ async function createTune(req, res) {
 }
 
 async function listTunes(req, res) {
-  const { page = 1, pageSize = 10, sortBy = 'createdAt' } = req.query
+  const { filter, page, pageSize, sortBy } = req.query
 
-  const links = getPageDescriptors({
-    page,
-    pageSize,
-    totalCount: TUNES.length,
-  })
-
-  const field = semver.gte(res.header('api-version'), '1.2.0')
-    ? sortBy
-    : 'createdAt'
-  const tunes = [...TUNES]
-    .sort((t1, t2) => t2[field].localeCompare(t1[field]))
-    .slice((page - 1) * pageSize, page * pageSize)
+  const searchArgs = { filter, page, pageSize }
+  if (semver.gte(res.header('api-version'), '1.2.0')) {
+    searchArgs.sorting = sortBy
+  }
+  const { links, tunes } = await Tune.search(searchArgs)
 
   for (const [rel, query] of Object.entries(links)) {
     const url = router.render('listTunes', {}, query)

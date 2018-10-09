@@ -2,6 +2,8 @@ import request from 'supertest'
 
 import connection from '../db/connection.js'
 import { createServer } from '../app.js'
+import Tune from '../db/Tune.js'
+import TUNES from '../../fixtures/tunes.js'
 
 const app = createServer()
 const REGEX_BSON = /^[0-9a-f]{24}$/
@@ -20,6 +22,11 @@ describe('Tunes controller', () => {
   })
 
   describe('Tune listings', () => {
+    beforeAll(async () => {
+      await Tune.deleteMany({})
+      await Tune.insertMany(TUNES)
+    })
+
     it('should order recent-first by default', () => {
       return request(app)
         .get(app.router.render('listTunes'))
@@ -35,7 +42,7 @@ describe('Tunes controller', () => {
 
     it('should retain recent-first ordering if not on v1.2+', () => {
       return request(app)
-        .get(app.router.render('listTunes', {}, { sortBy: 'title' }))
+        .get(app.router.render('listTunes', {}, { sortBy: '-title' }))
         .set('Accept-Version', '1.0')
         .expect(200)
         .then(({ body: { tunes } }) => {
@@ -49,7 +56,7 @@ describe('Tunes controller', () => {
 
     it('should honor `sortBy` argument if on v1.2+', () => {
       return request(app)
-        .get(app.router.render('listTunes', {}, { sortBy: 'title' }))
+        .get(app.router.render('listTunes', {}, { sortBy: '-title' }))
         .set('Accept-Version', '^1.2')
         .expect(200)
         .then(({ body: { tunes } }) => {
@@ -58,6 +65,15 @@ describe('Tunes controller', () => {
             { title: 'Sky' },
             { title: 'Kenia' },
           ])
+        })
+    })
+
+    it('should provide links, even if empty', () => {
+      return request(app)
+        .get(app.router.render('listTunes'))
+        .expect(200)
+        .then(({ body: { links } }) => {
+          expect(links).toEqual({})
         })
     })
 
