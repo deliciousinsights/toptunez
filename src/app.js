@@ -1,5 +1,7 @@
 import restify from 'restify'
 
+import { setupTuneRoutes } from './controllers/tunes.js'
+
 const APP_NAME = 'TopTunez'
 
 export function createServer() {
@@ -13,10 +15,7 @@ export function createServer() {
   server.use(restify.plugins.queryParser({ mapParams: false }))
   server.use(restify.plugins.jsonBodyParser())
 
-  server.get('/hello', (req, res, next) => {
-    res.send({ message: `Hello ${req.query.whom || 'you'}!` })
-    next()
-  })
+  setupTuneRoutes(server)
 
   return server
 }

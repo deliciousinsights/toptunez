@@ -1,0 +1,14 @@
+@host = http://localhost:3000
+
+### Tune creation
+
+# @name createTune
+POST {{host}}/tunes
+
+### Tune listing
+
+GET {{host}}/tunes
+
+### Vote on tune
+
+POST {{host}}/tunes/{{createTune.response.headers.X-Tune-ID}}/votes
