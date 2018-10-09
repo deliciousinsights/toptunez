@@ -2,6 +2,8 @@ import { expect } from 'chai'
 import request from 'supertest'
 
 import { createServer } from '../app.js'
+import Tune from '../db/Tune.js'
+import TUNES from '../../fixtures/tunes.json'
 
 const app = createServer()
 const REGEX_BSON = /^[0-9a-f]{24}$/
@@ -18,6 +20,11 @@ describe('Tunes controller', () => {
   })
 
   describe('Tune listings', () => {
+    before(async () => {
+      await Tune.deleteMany({})
+      await Tune.insertMany(TUNES)
+    })
+
     it('should order recent-first by default', () => {
       return request(app)
         .get(app.router.render('listTunes'))
@@ -30,7 +37,7 @@ describe('Tunes controller', () => {
 
     it('should retain recent-first ordering if not on v1.2+', () => {
       return request(app)
-        .get(app.router.render('listTunes', {}, { sortBy: 'title' }))
+        .get(app.router.render('listTunes', {}, { sortBy: '-title' }))
         .expect(200)
         .then((res) => {
           const titles = res.body.tunes.map(({ title }) => title)
@@ -40,12 +47,21 @@ describe('Tunes controller', () => {
 
     it('should honor `sortBy` argument if on v1.2+', () => {
       return request(app)
-        .get(app.router.render('listTunes', {}, { sortBy: 'title' }))
+        .get(app.router.render('listTunes', {}, { sortBy: '-title' }))
         .set('Accept-Version', '^1.2')
         .expect(200)
         .then((res) => {
           const titles = res.body.tunes.map(({ title }) => title)
           expect(titles).to.deep.equal(['World Falls Apart', 'Sky', 'Kenia'])
+        })
+    })
+
+    it('should provide links, even if empty', () => {
+      return request(app)
+        .get(app.router.render('listTunes'))
+        .expect(200)
+        .then(({ body: { links } }) => {
+          expect(links).to.deep.equal({})
         })
     })
 
