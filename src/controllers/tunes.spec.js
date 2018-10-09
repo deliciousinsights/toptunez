@@ -1,10 +1,24 @@
 import request from 'supertest'
 
+import connection from '../db/connection.js'
 import { createServer } from '../app.js'
 
 const app = createServer()
+const REGEX_BSON = /^[0-9a-f]{24}$/
 
 describe('Tunes controller', () => {
+  afterAll(() => connection.close())
+
+  describe('Tune mutations', () => {
+    it('should allow tune creation', () => {
+      return request(app)
+        .post(app.router.render('createTune'))
+        .send({ artist: 'Dash Berlin', title: 'World Falls Apart' })
+        .expect(201)
+        .expect('X-Tune-ID', REGEX_BSON)
+    })
+  })
+
   describe('Tune listings', () => {
     it('should order recent-first by default', () => {
       return request(app)
