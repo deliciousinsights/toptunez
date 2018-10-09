@@ -5,6 +5,7 @@
   "type": "module",
   "description": "A demo music recommendation API for Delicious Insights’ Node.js training, Dassault Aviation June 2021 Edition",
   "scripts": {
+    "dev": "nodemon src/server.js",
     "lint": "eslint src",
     "start": "node --experimental-json-modules --no-warnings src/server.js",
     "test": "cross-env NODE_ENV=test NODE_OPTIONS=\"--experimental-json-modules --no-warnings\" mocha",
