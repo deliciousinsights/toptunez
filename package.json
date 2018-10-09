@@ -59,7 +59,7 @@
     ],
     "notify": true,
     "rootDir": "src",
-    "testEnvironment": "node",
+    "testEnvironment": "<rootDir>/../jest/mongo-memory-environment.cjs",
     "transform": {},
     "watchPlugins": [
       "jest-watch-typeahead/filename",
