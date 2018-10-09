@@ -21,3 +21,9 @@ Accept-Version: ^1.2
 ### Vote on tune
 
 POST {{host}}/tunes/{{createTune.response.headers.X-Tune-ID}}/votes
+Content-Type: application/json
+
+{
+  "comment": "This tune rocks!",
+  "offset": 1
+}

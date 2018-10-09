@@ -1,3 +1,4 @@
+import errors from 'restify-errors'
 import restify from 'restify'
 
 import Tune from '../db/Tune.js'
@@ -55,7 +56,22 @@ async function listTunes(req, res, next) {
 
 async function voteOnTune(req, res, next) {
   try {
-    res.send(201, { score: 1, voteCount: 1 })
+    const { tuneId } = req.params
+    let tune = await Tune.findById(tuneId)
+
+    if (!tune) {
+      const err = new errors.UnprocessableEntityError(
+        {
+          info: { faultyId: tuneId },
+        },
+        'The tune you want to vote for cannot be found'
+      )
+      return next(err)
+    }
+
+    const { comment, offset } = req.body
+    tune = await tune.vote({ comment, offset })
+    res.noCache().send(201, { score: tune.score, voteCount: tune.votes.length })
     next()
   } catch (err) {
     next(err)

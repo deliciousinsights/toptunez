@@ -19,6 +19,20 @@ describe('Tunes controller', () => {
         .expect(201)
         .expect('X-Tune-ID', REGEX_BSON)
     })
+
+    it('should allow votes on a tune', async () => {
+      const tune = await Tune.create({
+        artist: 'Joachim Pastor',
+        title: 'Kenia',
+      })
+
+      return request(app)
+        .post(app.router.render('voteOnTune', { tuneId: tune.id }))
+        .send({ offset: 1, comment: 'This track is dope!' })
+        .expect(201)
+        .expect('Cache-Control', 'no-cache, no-store, must-revalidate')
+        .expect({ score: 1, voteCount: 1 })
+    })
   })
 
   describe('Tune listings', () => {
