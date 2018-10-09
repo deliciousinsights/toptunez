@@ -1,0 +1,40 @@
+{
+  // Utilisez IntelliSense pour en savoir plus sur les attributs possibles.
+  // Pointez pour afficher la description des attributs existants.
+  // Pour plus d'informations, visitez : https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    // Lance notre serveur REST sur son port par défaut (3000),
+    // en mode débogage avec rechargement automatique grâce à Nodemon.
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Lancer le serveur REST",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/nodemon",
+      "program": "${workspaceFolder}/src/server.js",
+      "restart": true,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    // Lance notre serveur GraphQL sur son port par défaut (3001),
+    // en mode débogage avec rechargement automatique grâce à Nodemon.
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Lancer le serveur GraphQL",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/nodemon",
+      "program": "${workspaceFolder}/src/graphql-server.js",
+      "restart": true,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    // Permet la connexion au serveur local Serverless pour déboguer
+    // nos fonctions avant déploiement.
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Se connecter au serverless local",
+      "processId": "${command:PickProcess}"
+    }
+  ]
+}
