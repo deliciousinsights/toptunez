@@ -1,10 +1,13 @@
 import { ApolloServer } from '@apollo/server'
 import gql from 'graphql-tag'
 
+import attrs from '../../fixtures/tune.json'
 import { buildSchema } from './index.js'
 import connection from '../db/connection.js'
 import Tune from '../db/Tune.js'
 import TUNES from '../../fixtures/tunes.js'
+
+const REGEX_BSONID = /^[0-9a-f]{24}$/
 
 describe('Tunes GraphQL schema', () => {
   const server = createTestServer()
@@ -48,6 +51,35 @@ describe('Tunes GraphQL schema', () => {
           { title: 'Sky' },
           { title: 'Kenia' },
         ])
+      })
+    })
+  })
+
+  describe('Mutations', () => {
+    describe('createTune', () => {
+      it('should allow tune creation', async () => {
+        const input = Object.entries(attrs)
+          .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+          .join(', ')
+
+        const { createTune } = await run(gql`
+            mutation {
+              createTune(input: { ${input} }) {
+                id
+                album
+                artist
+                title
+                score
+                url
+              }
+            }
+          `)
+
+        expect(createTune).toEqual({
+          ...attrs,
+          score: 0,
+          id: expect.stringMatching(REGEX_BSONID),
+        })
       })
     })
   })

@@ -41,6 +41,13 @@ const typeDefs = gql`
     TITLE_DESC
   }
 
+  input TuneInput {
+    album: String
+    artist: String!
+    title: String!
+    url: URL
+  }
+
   type Query {
     allTunes(
       filter: String
@@ -48,6 +55,10 @@ const typeDefs = gql`
       pageSize: Int = 10
       sorting: TuneSort = RECENT_FIRST
     ): [Tune!]!
+  }
+
+  type Mutation {
+    createTune(input: TuneInput!): Tune!
   }
 `
 
