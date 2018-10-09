@@ -1,3 +1,5 @@
+import TUNES from '../../fixtures/tunes.json'
+
 export function setupTuneRoutes(server) {
   server.get('/tunes', listTunes)
   server.post('/tunes', createTune)
