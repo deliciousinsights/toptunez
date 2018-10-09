@@ -1,0 +1,56 @@
+{
+  // Place your apps workspace snippets here. Each snippet is defined under a snippet name and has a scope, prefix, body and
+  // description. Add comma separated ids of the languages where the snippet is applicable in the scope field. If scope
+  // is left empty or omitted, the snippet gets applied to all languages. The prefix is what is
+  // used to trigger the snippet and the body will be expanded and inserted. Possible variables are:
+  // $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders.
+  // Placeholders with the same ids are connected.
+  // Example:
+  "New restify controller": {
+    "scope": "javascript,typescript",
+    "prefix": "nrc",
+    "body": [
+      "function setup${1:${TM_FILENAME_BASE/(.+)/${1:/capitalize}/}}Routes(server) {",
+      "  server.${2|get,post,patch,delete,put|}('/${3:${TM_FILENAME_BASE/(.+)/${1:/downcase}/}}', ${4:list${1}})",
+      "  $5",
+      "}",
+      "",
+      "async function ${4:list${TM_FILENAME_BASE/(.+)/${1:/capitalize}/}}(req, res, next) {",
+      "  try {",
+      "    ${0}res.send(200, { result: 'OKK' })",
+      "    next()",
+      "  } catch (err) {",
+      "    next(err)",
+      "  }",
+      "}",
+      "",
+      "export default setup${1}Routes"
+    ],
+    "description": "Skeleton for a Restify controller file, with routing table and first route definition."
+  },
+  "New Mongoose Schema+Model": {
+    "scope": "javascript,typescript",
+    "prefix": "nmm",
+    "body": [
+      "import mongoose from 'mongoose'",
+      "",
+      "import connection from './connection.js'",
+      "",
+      "const ${1:${TM_FILENAME_BASE/(.+)/${1:/downcase}/}}Schema = new mongoose.Schema(",
+      "  {",
+      "    ${0:// Your fields here}",
+      "  },",
+      "  {",
+      "    collation: { locale: '${2:en_US}', strength: 1 },",
+      "    strict: 'throw',",
+      "    timestamps: true,",
+      "  }",
+      ")",
+      "",
+      "const ${3:${TM_FILENAME_BASE/(.+)/${1:/capitalize}/}} = connection.model('$3', ${1}Schema)",
+      "",
+      "export default $3"
+    ],
+    "description": "Skeleton for a Mongoose schema + model."
+  }
+}
