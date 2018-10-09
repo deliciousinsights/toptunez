@@ -3,15 +3,17 @@ import chalk from 'chalk-template'
 import restify from 'restify'
 import restifyErrors from 'restify-errors'
 
+import connection from './db/connection.js'
 import { createServer } from './app.js'
 
 const PORT = Number(process.env.PORT) || 3000
 
-initServer()
+connection.on('open', initServer)
 
 function cleanUp(server) {
   console.log(chalk`{cyan ${server.name} REST server shutting down…}`)
-  server.close(() => {
+  server.close(async () => {
+    await connection.close()
     console.log(chalk`{green ${server.name} REST server shutdown complete}`)
   })
 }
