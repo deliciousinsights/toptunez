@@ -15,6 +15,39 @@
       "restart": true,
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
+    },
+    // Permet le débogage de nos tests
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Déboguer les tests",
+      "runtimeArgs": ["--experimental-json-modules", "--no-warnings"],
+      "program": "${workspaceFolder}/node_modules/.bin/_mocha",
+      "args": ["--inspect"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "NODE_ENV": "test"
+      },
+      "disableOptimisticBPs": true
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Déboguer le fichier de tests courant",
+      "runtimeArgs": ["--experimental-json-modules", "--no-warnings"],
+      "program": "${workspaceFolder}/node_modules/.bin/_mocha",
+      "args": ["--inspect", "${relativeFile}"],
+      "cwd": "${workspaceFolder}",
+      "protocol": "inspector",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "NODE_ENV": "test"
+      },
+      "disableOptimisticBPs": true
     }
   ]
 }
