@@ -16,6 +16,7 @@ const typeDefs = gql`
     score: Int!
     title: String!
     url: URL
+    voteCount: Int!
     votes: [TuneVote!]!
   }
 
@@ -80,8 +81,13 @@ const typeDefs = gql`
 // ---------
 
 const resolvers = {
-  Mutation: { createTune },
+  Mutation: { createTune, voteOnTune },
   Query: { allTunes },
+  Tune: {
+    voteCount(tune) {
+      return tune.votes.length
+    },
+  },
   TuneVote: {
     direction(vote) {
       return vote.offset > 0 ? 'UPVOTE' : 'DOWNVOTE'
@@ -101,6 +107,16 @@ async function allTunes(root, { filter, page, pageSize, sorting }) {
 
 function createTune(root, { input }) {
   return Tune.create(input)
+}
+
+async function voteOnTune(root, { input: { comment, direction, tuneID } }) {
+  let tune = await Tune.findById(tuneID)
+  const offset = direction === 'UPVOTE' ? 1 : -1
+  tune = await tune.vote({ comment, offset })
+
+  const vote = tune.votes[tune.votes.length - 1]
+
+  return { tune, vote }
 }
 
 export default { typeDefs, resolvers }
