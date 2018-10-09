@@ -1,0 +1,107 @@
+{
+  "name": "toptunez",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A demo music recommendation API for Delicious Insights’ Node.js training, Dassault Aviation June 2021 Edition",
+  "scripts": {
+    "lint": "eslint src",
+    "start": "node --experimental-json-modules --no-warnings src/server.js",
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS=\"--experimental-json-modules --no-warnings\" mocha",
+    "test:watch": "npm test -- --watch"
+  },
+  "engines": {
+    "node": ">=14",
+    "npm": ">=6"
+  },
+  "keywords": [
+    "node",
+    "demo",
+    "music",
+    "mongoose",
+    "rest",
+    "api"
+  ],
+  "author": "Christophe Porteneuve <christophe@delicious-insights.com> (https://delicious-insights.com/)",
+  "license": "MIT",
+  "eslintConfig": {
+    "extends": [
+      "standard",
+      "prettier",
+      "plugin:import/errors"
+    ],
+    "plugins": [
+      "prettier",
+      "import"
+    ],
+    "rules": {
+      "no-irregular-whitespace": 0
+    },
+    "env": {
+      "commonjs": true,
+      "es6": true,
+      "mocha": true,
+      "node": true
+    }
+  },
+  "mocha": {
+    "forbid-only": true,
+    "parallel": true,
+    "spec": "src/**/*.spec.js",
+    "watch-files": "src/**/*.js"
+  },
+  "prettier": {
+    "jsxSingleQuote": true,
+    "semi": false,
+    "singleQuote": true
+  },
+  "deliciousImportSort": {
+    "mainOrder": [
+      "absolute",
+      "relative",
+      "bare"
+    ]
+  },
+  "importSort": {
+    ".js": {
+      "style": "delicious"
+    }
+  },
+  "dependencies": {
+    "bunyan": "^1.8.15",
+    "chalk": "^4.1.1",
+    "dotenv-safe": "^8.2.0",
+    "email-regex": "^5.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "lodash.merge": "^4.6.2",
+    "mongoose": "^5.12.13",
+    "mongoose-pii": "^2.0.0",
+    "node-restify-validation": "^1.3.0",
+    "otplib": "^12.0.1",
+    "qrcode": "^1.4.4",
+    "restify": "^8.5.1",
+    "restify-cors-middleware": "^1.1.1",
+    "restify-errors": "^8.0.2",
+    "restify-jwt-community": "^1.1.14",
+    "url-regex-safe": "^2.0.2"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "cross-env": "^7.0.3",
+    "eslint": "^7.28.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-config-standard": "^16.0.3",
+    "eslint-plugin-import": "^2.23.4",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "eslint-plugin-promise": "^5.1.0",
+    "eslint-plugin-standard": "^5.0.0",
+    "import-sort-cli": "^6.0.0",
+    "import-sort-style-delicious": "^1.0.2",
+    "mocha": "^9.0.0",
+    "mongodb-memory-server": "^6.9.6",
+    "nodemon": "^2.0.7",
+    "prettier": "^2.3.1",
+    "supertest": "^6.1.3"
+  }
+}
