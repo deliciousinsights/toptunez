@@ -1,0 +1,8 @@
+{
+  "execMap": {
+    "js": "node --no-warnings"
+  },
+  "ignore": ["jest", "node_modules", "src/**/*.spec.js"],
+  "verbose": false,
+  "watch": "*.js"
+}
