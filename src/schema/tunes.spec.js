@@ -89,6 +89,37 @@ describe('Tunes GraphQL schema', () => {
         expect(createTune.id).toMatch(REGEX_BSONID)
       })
     })
+
+    describe('voteOnTune', () => {
+      it('should allow votes on a tune', async () => {
+        const tune = await Tune.create({
+          artist: 'Joachim Pastor',
+          title: 'Kenia',
+        })
+
+        const { voteOnTune } = await run({
+          server,
+          mutation: gql`
+            mutation {
+              voteOnTune(input: { tuneID: "${tune.id}", direction: UPVOTE, comment: "This track is dope!" }) {
+                tune {
+                  score
+                }
+                vote {
+                  comment
+                  direction
+                }
+              }
+            }
+          `,
+        })
+
+        expect(voteOnTune).toMatchObject({
+          vote: { comment: 'This track is dope!', direction: 'UPVOTE' },
+          tune: { score: 1 },
+        })
+      })
+    })
   })
 })
 

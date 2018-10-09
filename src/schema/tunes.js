@@ -50,6 +50,17 @@ const typeDefs = gql`
     url: URL
   }
 
+  input TuneVoteInput {
+    tuneID: ID!
+    direction: TuneVoteDirection!
+    comment: String
+  }
+
+  type TuneVotePayload {
+    tune: Tune!
+    vote: TuneVote!
+  }
+
   type Query {
     allTunes(
       filter: String
@@ -61,6 +72,7 @@ const typeDefs = gql`
 
   type Mutation {
     createTune(input: TuneInput!): Tune!
+    voteOnTune(input: TuneVoteInput!): TuneVotePayload!
   }
 `
 
