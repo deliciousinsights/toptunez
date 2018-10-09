@@ -4,6 +4,9 @@
 
 # @name createTune
 POST {{host}}/tunes
+Content-Type: application/json
+
+< ./fixtures/tune.json
 
 ### Tune listing -- sortBy ignored (< v1.2>
 

@@ -1,6 +1,7 @@
 import restify from 'restify'
 
 import { getPageDescriptors } from '../util/pagination.js'
+import Tune from '../db/Tune.js'
 import TUNES from '../../fixtures/tunes.json'
 
 let router
@@ -21,7 +22,9 @@ export function setupTuneRoutes(server) {
 
 async function createTune(req, res, next) {
   try {
-    res.header('X-Tune-ID', 42)
+    const { album, artist, title, url } = req.body
+    const tune = await Tune.create({ album, artist, title, url })
+    res.header('X-Tune-ID', tune.id)
     res.send(201)
     next()
   } catch (err) {
