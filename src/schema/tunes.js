@@ -66,6 +66,7 @@ const typeDefs = gql`
 // ---------
 
 const resolvers = {
+  Mutation: { createTune },
   Query: { allTunes },
   TuneVote: {
     direction(vote) {
@@ -82,6 +83,10 @@ async function allTunes(root, { filter, page, pageSize, sorting }) {
     sorting: mapTuneSorting(sorting),
   })
   return tunes
+}
+
+function createTune(root, { input }) {
+  return Tune.create(input)
 }
 
 export default { typeDefs, resolvers }
