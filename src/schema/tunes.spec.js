@@ -2,6 +2,7 @@ import { ApolloServer } from 'apollo-server'
 import { createTestClient } from 'apollo-server-testing'
 import gql from 'graphql-tag'
 
+import attrs from '../../fixtures/tune.json'
 import connection from '../db/connection.js'
 import schema from './index.js'
 import Tune from '../db/Tune.js'
@@ -57,6 +58,35 @@ describe('Tunes GraphQL schema', () => {
           { title: 'Sky' },
           { title: 'Kenia' },
         ])
+      })
+    })
+  })
+
+  describe('Mutations', () => {
+    describe('createTune', () => {
+      it('should allow tune creation', async () => {
+        const input = Object.entries(attrs)
+          .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+          .join(', ')
+
+        const { createTune } = await run({
+          server,
+          mutation: gql`
+            mutation {
+              createTune(input: { ${input} }) {
+                id
+                album
+                artist
+                title
+                score
+                url
+              }
+            }
+          `,
+        })
+
+        expect(createTune).toMatchObject({ ...attrs, score: 0 })
+        expect(createTune.id).toMatch(REGEX_BSONID)
       })
     })
   })
