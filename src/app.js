@@ -4,6 +4,7 @@ import restifyValidation from 'node-restify-validation'
 
 import './util/expose-restify-route-expandos.js'
 import { setupTuneRoutes } from './controllers/tunes.js'
+import { setupUserRoutes } from './controllers/users.js'
 
 const APP_NAME = 'TopTunez'
 
@@ -39,6 +40,7 @@ export function createServer() {
   )
 
   setupTuneRoutes(server)
+  setupUserRoutes(server)
 
   return server
 }
