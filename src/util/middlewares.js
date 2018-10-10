@@ -4,6 +4,8 @@ import errors from 'restify-errors'
 import jwtMiddleware from 'restify-jwt-community'
 import ms from 'ms'
 
+import User from '../db/User.js'
+
 configEnv()
 
 export const DEFAULT_CORS_OPTIONS = {
@@ -92,5 +94,18 @@ export function requireAuth({ role = null, roles = [] } = {}) {
     }
 
     next()
+  }
+}
+
+export function totpCheck({ totpHeader = 'X-TOTP-Token' } = {}) {
+  return async function checkTOTP(req, res) {
+    if (!req.user) {
+      return
+    }
+
+    const token =
+      req.headers[totpHeader] || req.headers[totpHeader.toLowerCase()]
+    const error = await User.checkMFA({ email: req.user.email, token })
+    return error ? new errors.InvalidCredentialsError(error.message) : null
   }
 }

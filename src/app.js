@@ -2,7 +2,7 @@ import errors from 'restify-errors'
 import restify from 'restify'
 import restifyValidation from 'node-restify-validation'
 
-import { cors, hsts, jwt } from './util/middlewares.js'
+import { cors, hsts, jwt, totpCheck } from './util/middlewares.js'
 import { setupTuneRoutes } from './controllers/tunes.js'
 import { setupUserRoutes } from './controllers/users.js'
 
@@ -21,6 +21,7 @@ export function createServer() {
 
   server.pre(corsMW.preflight)
   server.pre(jwt())
+  server.pre(totpCheck())
 
   if (process.env.NODE_ENV !== 'test') {
     server.use(

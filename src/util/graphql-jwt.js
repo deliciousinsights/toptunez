@@ -5,6 +5,8 @@ import { getDirective, MapperKind, mapSchema } from '@graphql-tools/utils'
 import gql from 'graphql-tag'
 import jwt from 'jsonwebtoken'
 
+import User from '../db/User.js'
+
 configEnv()
 
 const JWT_SECRET = process.env.JWT_SECRET
@@ -17,6 +19,15 @@ export async function getUserFromReq({ req }) {
   }
 
   const user = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] })
+  if (user) {
+    const error = await User.checkMFA({
+      email: user.email,
+      token: req.headers['x-totp-token'],
+    })
+    if (error) {
+      throw error
+    }
+  }
   return { user }
 }
 
