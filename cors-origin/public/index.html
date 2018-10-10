@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>TopTunez CORS Calling Page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  <h1>TopTunez CORS Calling Page</h1>
+
+  <button id="triggerCORSRestCall">Trigger a CORS tune listing</button>
+  <pre id="result"></pre>
+  <script>
+    const container = document.getElementById('result')
+    document.getElementById('triggerCORSRestCall').addEventListener('click', async () => {
+      try {
+        const payload = await (await fetch('http://localhost:3000/tunes')).json()
+        result.textContent = JSON.stringify(payload, null, 2)
+      } catch (err) {
+        result.textContent = `ERROR: ${err.message}`
+      }
+    })
+  </script>
+</body>
+</html>
