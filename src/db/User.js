@@ -1,6 +1,7 @@
 import { config as configEnv } from 'dotenv-safe'
 import emailRegex from 'email-regex'
 import jwt from 'jsonwebtoken'
+import { markFieldsAsPII } from 'mongoose-pii'
 import mongoose from 'mongoose'
 
 import connection from './connection.js'
@@ -32,9 +33,11 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   }
 )
+userSchema.plugin(markFieldsAsPII, { passwordFields: 'password' })
+
 Object.assign(userSchema.statics, {
   async logIn({ email, password }) {
-    const user = await this.findOne({ email, password })
+    const user = await this.authenticate({ email, password })
     if (!user) {
       return { user }
     }
