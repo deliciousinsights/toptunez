@@ -4,6 +4,7 @@ import { config as configEnv } from 'dotenv-safe'
 
 import { auth, getUserFromReq } from './util/graphql-jwt.js'
 import connection from './db/connection.js'
+import { DEFAULT_CORS_OPTIONS as cors } from './util/middlewares.js'
 import schema from './schema/index.js'
 
 configEnv()
@@ -23,6 +24,12 @@ async function initServer() {
   const options = {
     ...schema,
     context: getUserFromReq,
+    cors: {
+      allowedHeaders: cors.allowHeaders,
+      exposedHeaders: cors.exposeHeaders,
+      maxAge: cors.preflightMaxAge,
+      origin: cors.origins,
+    },
     schemaDirectives: { auth: auth.directive },
     tracing: true,
   }
