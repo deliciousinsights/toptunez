@@ -2,6 +2,8 @@ import { config as configEnv } from 'dotenv-safe'
 import errors from 'restify-errors'
 import jwtMiddleware from 'restify-jwt-community'
 
+import User from '../db/User.js'
+
 configEnv()
 
 export function jwt() {
@@ -34,5 +36,22 @@ export function requireAuth({ role = null, roles = [] } = {}) {
     }
 
     next()
+  }
+}
+
+export function totpCheck({ totpHeader = 'X-TOTP-Token' } = {}) {
+  return async function checkTOTP(req, res, next) {
+    if (!req.user) {
+      return next()
+    }
+
+    const token =
+      req.headers[totpHeader] || req.headers[totpHeader.toLowerCase()]
+    try {
+      const error = await User.checkMFA({ email: req.user.email, token })
+      next(error ? new errors.InvalidCredentialsError(error.message) : null)
+    } catch (err) {
+      next(err)
+    }
   }
 }
