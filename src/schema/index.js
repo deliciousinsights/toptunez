@@ -4,9 +4,10 @@ import merge from 'lodash.merge'
 
 import customScalarsSchema from './custom-scalars.js'
 import tunesSchema from './tunes.js'
+import usersSchema from './users.js'
 
 const schema = {
-  ...mergeSchemas(customScalarsSchema, tunesSchema),
+  ...mergeSchemas(customScalarsSchema, tunesSchema, usersSchema),
   validationRules: [createComplexityLimitRule(1000), depthLimit(10)],
 }
 
