@@ -8,6 +8,11 @@ Content-Type: application/json
 
 < ./fixtures/tune.json
 
+### Tune listing, invalid query
+
+GET {{host}}/tunes?sortBy=foo&page=0&pageSize=15&pouet=coin
+Accept-Version: 1.0
+
 ### Tune listing -- sortBy ignored (< v1.2>
 
 GET {{host}}/tunes?sortBy=title

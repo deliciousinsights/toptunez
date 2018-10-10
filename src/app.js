@@ -1,4 +1,6 @@
+import errors from 'restify-errors'
 import restify from 'restify'
+import restifyValidation from 'node-restify-validation'
 
 import './util/expose-restify-route-expandos.js'
 import { setupTuneRoutes } from './controllers/tunes.js'
@@ -13,8 +15,17 @@ export function createServer() {
   server.pre(restify.plugins.pre.strictQueryParams())
   server.pre(restify.plugins.pre.userAgentConnection())
 
+  server.use(restify.plugins.acceptParser(server.acceptable))
   server.use(restify.plugins.queryParser({ mapParams: false }))
   server.use(restify.plugins.jsonBodyParser())
+
+  server.use(
+    restifyValidation.validationPlugin({
+      forbidUndefinedVariables: true,
+      errorHandler: errors.BadRequestError,
+      validatorModels: restifyValidation.validatorModels,
+    })
+  )
 
   setupTuneRoutes(server)
 
