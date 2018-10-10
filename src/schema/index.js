@@ -5,9 +5,10 @@ import merge from 'lodash.merge'
 
 import customScalarsSchema from './custom-scalars.js'
 import tunesSchema from './tunes.js'
+import usersSchema from './users.js'
 
 export function buildSchema() {
-  let schema = mergeSchemas(customScalarsSchema, tunesSchema)
+  let schema = mergeSchemas(customScalarsSchema, tunesSchema, usersSchema)
   schema = makeExecutableSchema(schema)
   return schema
 }
