@@ -7,9 +7,17 @@ import jwt from 'jsonwebtoken'
 
 configEnv()
 
+const JWT_SECRET = process.env.JWT_SECRET
+
 export async function getUserFromReq({ req }) {
-  // FIXME: Return a context object, with a valid `user` key if we have an
-  // authenticated user
+  const header = req.headers.authorization || ''
+  const token = header.match(/^JWT (.+)$/)?.[1]
+  if (!token) {
+    return {}
+  }
+
+  const user = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] })
+  return { user }
 }
 
 const authTypeMap = new Map()

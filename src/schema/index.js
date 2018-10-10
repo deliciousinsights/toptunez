@@ -3,12 +3,18 @@ import depthLimit from 'graphql-depth-limit'
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import merge from 'lodash.merge'
 
+import { authDirective } from '../util/graphql-jwt.js'
 import customScalarsSchema from './custom-scalars.js'
 import tunesSchema from './tunes.js'
 import usersSchema from './users.js'
 
 export function buildSchema() {
-  let schema = mergeSchemas(customScalarsSchema, tunesSchema, usersSchema)
+  let schema = mergeSchemas(
+    authDirective(),
+    customScalarsSchema,
+    tunesSchema,
+    usersSchema
+  )
   const transformer = schema.transformer
   schema = makeExecutableSchema(schema)
   if (typeof transformer === 'function') {

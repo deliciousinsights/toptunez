@@ -43,6 +43,8 @@ Object.assign(userSchema.statics, {
     return { user, token }
   },
 
+  ROLES,
+
   async signUp({ email, firstName, lastName, password, roles }) {
     const user = await this.create({
       email,

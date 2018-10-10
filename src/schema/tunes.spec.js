@@ -57,23 +57,37 @@ describe('Tunes GraphQL schema', () => {
 
   describe('Mutations', () => {
     describe('createTune', () => {
-      it('should allow tune creation', async () => {
-        const input = Object.entries(attrs)
-          .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
-          .join(', ')
+      const input = Object.entries(attrs)
+        .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+        .join(', ')
 
-        const { createTune } = await run(gql`
-            mutation {
-              createTune(input: { ${input} }) {
-                id
-                album
-                artist
-                title
-                score
-                url
-              }
-            }
-          `)
+      const query = gql`
+        mutation {
+          createTune(input: { ${input} }) {
+            id
+            album
+            artist
+            title
+            score
+            url
+          }
+        }
+      `
+
+      it('should require authentication', () => {
+        return expect(run(query)).rejects.toThrow(
+          'createTune requires authentication'
+        )
+      })
+
+      it('should require admin privileges', () => {
+        return expect(run(query, { roles: [] })).rejects.toThrow(
+          /createTune requires .* admin/
+        )
+      })
+
+      it('should allow tune creation', async () => {
+        const { createTune } = await run(query, { roles: ['admin'] })
 
         expect(createTune).toEqual({
           ...attrs,
@@ -84,25 +98,37 @@ describe('Tunes GraphQL schema', () => {
     })
 
     describe('voteOnTune', () => {
-      it('should allow votes on a tune', async () => {
-        const tune = await Tune.create({
+      let tune, query
+
+      beforeAll(async () => {
+        tune = await Tune.create({
           artist: 'Joachim Pastor',
           title: 'Kenia',
         })
 
-        const { voteOnTune } = await run(gql`
-            mutation {
-              voteOnTune(input: { tuneID: "${tune.id}", direction: UPVOTE, comment: "This track is dope!" }) {
-                tune {
-                  score
-                }
-                vote {
-                  comment
-                  direction
-                }
+        query = gql`
+          mutation {
+            voteOnTune(input: { tuneID: "${tune.id}", direction: UPVOTE, comment: "This track is dope!" }) {
+              tune {
+                score
+              }
+              vote {
+                comment
+                direction
               }
             }
-          `)
+          }
+        `
+      })
+
+      it('should require authentication', () => {
+        return expect(run(query)).rejects.toThrow(
+          'voteOnTune requires authentication'
+        )
+      })
+
+      it('should allow votes on a tune', async () => {
+        const { voteOnTune } = await run(query, { roles: [] })
 
         expect(voteOnTune).toMatchObject({
           vote: { comment: 'This track is dope!', direction: 'UPVOTE' },
@@ -123,10 +149,10 @@ describe('Tunes GraphQL schema', () => {
   // résultante à chaque exécution GraphQL, dans le champ `data`.  En revanche, si
   // une erreur survient, on ne verrait donc pas le champ `error`, présent au même
   // niveau.
-  async function run(query) {
+  async function run(query, user = null) {
     const {
       body: { singleResult: result },
-    } = await server.executeOperation({ query })
+    } = await server.executeOperation({ query }, { contextValue: { user } })
 
     if (result.errors) {
       throw new Error(result.errors[0].message)

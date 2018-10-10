@@ -8,6 +8,7 @@ import { expressMiddleware } from '@apollo/server/express4'
 
 import { buildSchema, validationRules } from './schema/index.js'
 import connection from './db/connection.js'
+import { getUserFromReq } from './util/graphql-jwt.js'
 
 const PORT = process.env.PORT || 3001
 
@@ -32,7 +33,11 @@ async function initServer() {
   const server = new ApolloServer(options)
   await server.start()
 
-  expressApp.use('/graphql', bodyParser.json(), expressMiddleware(server))
+  expressApp.use(
+    '/graphql',
+    bodyParser.json(),
+    expressMiddleware(server, { context: getUserFromReq })
+  )
   await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve))
   console.log(
     chalk`🚀  {green TopTunez GraphQL server ready at} {cyan.underline http://localhost:${PORT}/graphql}`
