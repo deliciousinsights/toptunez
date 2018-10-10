@@ -1,8 +1,11 @@
 import { ApolloServer } from 'apollo-server'
 import chalk from 'chalk'
+import { config as configEnv } from 'dotenv-safe'
 
 import connection from './db/connection.js'
 import schema from './schema/index.js'
+
+configEnv()
 
 const PORT = process.env.PORT || 3001
 
@@ -16,7 +19,14 @@ async function cleanUp(server) {
 }
 
 async function initServer() {
-  const options = { ...schema, tracing: true }
+  const options = {
+    ...schema,
+    tracing: true,
+  }
+
+  if (process.env.APOLLO_KEY) {
+    options.engine = { reportSchema: true }
+  }
 
   const server = new ApolloServer(options)
   const { url } = await server.listen(PORT)
