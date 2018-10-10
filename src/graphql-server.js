@@ -7,9 +7,12 @@ import { createServer } from 'http'
 import express from 'express'
 import { expressMiddleware } from '@apollo/server/express4'
 
+import {
+  apolloHSTS,
+  DEFAULT_CORS_OPTIONS as corsConfig,
+} from './util/middlewares.js'
 import { buildSchema, validationRules } from './schema/index.js'
 import connection from './db/connection.js'
-import { DEFAULT_CORS_OPTIONS as corsConfig } from './util/middlewares.js'
 import { getUserFromReq } from './util/graphql-jwt.js'
 
 const PORT = process.env.PORT || 3001
@@ -28,7 +31,10 @@ async function initServer() {
   const httpServer = createServer(expressApp)
   const options = {
     schema: buildSchema(),
-    plugins: [new ApolloServerPluginDrainHttpServer({ httpServer })],
+    plugins: [
+      apolloHSTS(),
+      new ApolloServerPluginDrainHttpServer({ httpServer }),
+    ],
     validationRules,
   }
 
