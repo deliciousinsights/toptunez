@@ -16,6 +16,17 @@ export function createServer() {
   server.pre(restify.plugins.pre.strictQueryParams())
   server.pre(restify.plugins.pre.userAgentConnection())
 
+  if (process.env.NODE_ENV !== 'test') {
+    server.use(
+      restify.plugins.throttle({
+        burst: 5,
+        ip: true,
+        rate: 1,
+        setHeaders: true,
+      })
+    )
+  }
+
   server.use(restify.plugins.acceptParser(server.acceptable))
   server.use(restify.plugins.queryParser({ mapParams: false }))
   server.use(restify.plugins.jsonBodyParser())
