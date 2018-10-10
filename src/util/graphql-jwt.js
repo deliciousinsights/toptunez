@@ -4,6 +4,8 @@ import { defaultFieldResolver } from 'graphql'
 import errors from 'restify-errors'
 import jwt from 'jsonwebtoken'
 
+import User from '../db/User.js'
+
 const { gql, SchemaDirectiveVisitor } = apollo
 
 configEnv()
@@ -18,6 +20,15 @@ export async function getUserFromReq({ req }) {
   }
 
   const user = jwt.verify(token, JWT_SECRET)
+  if (user) {
+    const error = await User.checkMFA({
+      email: user.email,
+      token: req.headers['x-totp-token'],
+    })
+    if (error) {
+      throw error
+    }
+  }
   return { user }
 }
 

@@ -84,3 +84,13 @@ Content-Type: application/json
   "email": "john@smith.com",
   "pass": "foobar"
 }
+
+### Toggle MFA (existing user)
+
+PATCH {{host}}/users/me/mfa
+Content-Type: application/json
+Authorization: JWT {{logIn.response.body.token}}
+
+{
+  "enabled": true
+}

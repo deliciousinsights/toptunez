@@ -34,6 +34,11 @@ const typeDefs = gql`
     password: String!
   }
 
+  type ToggleMFAPayload {
+    enabled: Boolean!
+    url: URL
+  }
+
   extend type Query {
     user(email: EmailAddress!): User
   }
@@ -41,11 +46,12 @@ const typeDefs = gql`
   extend type Mutation {
     logIn(input: LogInInput!): String
     signUp(input: SignUpInput!): String!
+    toggleMFA(enabled: Boolean!): ToggleMFAPayload! @auth
   }
 `
 
 const resolvers = {
-  Mutation: { logIn, signUp },
+  Mutation: { logIn, signUp, toggleMFA },
   // Petite requête supplémentaire pour insister sur la granularité par champ
   // des directives.
   Query: { user },
@@ -67,6 +73,11 @@ async function logIn(root, { input }) {
 async function signUp(root, { input }) {
   const { token } = await User.signUp(input)
   return token
+}
+
+async function toggleMFA(root, { enabled }, { user: { email } }) {
+  const user = await User.findOne({ email })
+  return user.toggleMFA(enabled)
 }
 
 function user(root, { email }) {
