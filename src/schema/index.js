@@ -2,12 +2,15 @@ import { createComplexityLimitRule } from 'graphql-validation-complexity'
 import depthLimit from 'graphql-depth-limit'
 import merge from 'lodash.merge'
 
+import { auth } from '../util/graphql-jwt.js'
 import customScalarsSchema from './custom-scalars.js'
 import tunesSchema from './tunes.js'
 import usersSchema from './users.js'
 
+const authSchema = { typeDefs: auth.typeDefs }
+
 const schema = {
-  ...mergeSchemas(customScalarsSchema, tunesSchema, usersSchema),
+  ...mergeSchemas(authSchema, customScalarsSchema, tunesSchema, usersSchema),
   validationRules: [createComplexityLimitRule(1000), depthLimit(10)],
 }
 

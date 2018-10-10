@@ -3,6 +3,7 @@ import { createTestClient } from 'apollo-server-testing'
 import gql from 'graphql-tag'
 
 import attrs from '../../fixtures/tune.json'
+import { auth } from '../util/graphql-jwt.js'
 import connection from '../db/connection.js'
 import schema from './index.js'
 import Tune from '../db/Tune.js'
@@ -64,26 +65,40 @@ describe('Tunes GraphQL schema', () => {
 
   describe('Mutations', () => {
     describe('createTune', () => {
-      it('should allow tune creation', async () => {
-        const input = Object.entries(attrs)
-          .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
-          .join(', ')
+      const input = Object.entries(attrs)
+        .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+        .join(', ')
 
-        const { createTune } = await run({
-          server,
-          mutation: gql`
-            mutation {
-              createTune(input: { ${input} }) {
-                id
-                album
-                artist
-                title
-                score
-                url
-              }
-            }
-          `,
-        })
+      const mutation = gql`
+        mutation {
+          createTune(input: { ${input} }) {
+            id
+            album
+            artist
+            title
+            score
+            url
+          }
+        }
+      `
+
+      it('should require authentication', () => {
+        server.test.logOut()
+        return expect(run({ server, mutation })).rejects.toThrow(
+          'createTune requires authentication'
+        )
+      })
+
+      it('should require admin privileges', () => {
+        server.test.logIn()
+        return expect(run({ server, mutation })).rejects.toThrow(
+          /createTune requires .* ADMIN/
+        )
+      })
+
+      it('should allow tune creation', async () => {
+        server.test.logIn('admin')
+        const { createTune } = await run({ server, mutation })
 
         expect(createTune).toMatchObject({ ...attrs, score: 0 })
         expect(createTune.id).toMatch(REGEX_BSONID)
@@ -91,28 +106,40 @@ describe('Tunes GraphQL schema', () => {
     })
 
     describe('voteOnTune', () => {
-      it('should allow votes on a tune', async () => {
-        const tune = await Tune.create({
+      let tune, mutation
+
+      beforeAll(async () => {
+        tune = await Tune.create({
           artist: 'Joachim Pastor',
           title: 'Kenia',
         })
 
-        const { voteOnTune } = await run({
-          server,
-          mutation: gql`
-            mutation {
-              voteOnTune(input: { tuneID: "${tune.id}", direction: UPVOTE, comment: "This track is dope!" }) {
-                tune {
-                  score
-                }
-                vote {
-                  comment
-                  direction
-                }
+        mutation = gql`
+          mutation {
+            voteOnTune(input: { tuneID: "${tune.id}", direction: UPVOTE, comment: "This track is dope!" }) {
+              tune {
+                score
+              }
+              vote {
+                comment
+                direction
               }
             }
-          `,
-        })
+          }
+        `
+      })
+
+      it('should require authentication', () => {
+        server.test.logOut()
+
+        return expect(run({ server, mutation })).rejects.toThrow(
+          'voteOnTune requires authentication'
+        )
+      })
+
+      it('should allow votes on a tune', async () => {
+        server.test.logIn()
+        const { voteOnTune } = await run({ server, mutation })
 
         expect(voteOnTune).toMatchObject({
           vote: { comment: 'This track is dope!', direction: 'UPVOTE' },
@@ -132,7 +159,7 @@ function createTestServer() {
   const server = new ApolloServer({
     ...schema,
     context: () => ({ user }),
-    // schemaDirectives: { auth: auth.directive },
+    schemaDirectives: { auth: auth.directive },
   })
 
   server.test = {

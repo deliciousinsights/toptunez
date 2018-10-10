@@ -2,6 +2,7 @@ import { ApolloServer } from 'apollo-server'
 import chalk from 'chalk'
 import { config as configEnv } from 'dotenv-safe'
 
+import { auth, getUserFromReq } from './util/graphql-jwt.js'
 import connection from './db/connection.js'
 import schema from './schema/index.js'
 
@@ -21,6 +22,8 @@ async function cleanUp(server) {
 async function initServer() {
   const options = {
     ...schema,
+    context: getUserFromReq,
+    schemaDirectives: { auth: auth.directive },
     tracing: true,
   }
 

@@ -72,8 +72,8 @@ const typeDefs = gql`
   }
 
   type Mutation {
-    createTune(input: TuneInput!): Tune!
-    voteOnTune(input: TuneVoteInput!): TuneVotePayload!
+    createTune(input: TuneInput!): Tune! @auth(role: ADMIN)
+    voteOnTune(input: TuneVoteInput!): TuneVotePayload! @auth
   }
 `
 
