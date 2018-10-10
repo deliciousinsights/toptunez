@@ -1,6 +1,7 @@
 import { config as configEnv } from 'dotenv-safe'
 import emailRegex from 'email-regex'
 import jwt from 'jsonwebtoken'
+import { markFieldsAsPII } from 'mongoose-pii'
 import mongoose from 'mongoose'
 
 import { checkMFAToken, genMFAQRCodeURL, genMFASecret } from '../util/totp.js'
@@ -36,6 +37,8 @@ const userSchema = new mongoose.Schema(
   }
 )
 
+userSchema.plugin(markFieldsAsPII, { passwordFields: 'password' })
+
 userSchema.virtual('requiresMFA').get(function () {
   return this.mfaSecret != null
 })
@@ -59,7 +62,7 @@ Object.assign(userSchema.statics, {
   },
 
   async logIn({ email, password }) {
-    const user = await this.findOne({ email, password })
+    const user = await this.authenticate({ email, password })
     if (!user) {
       return { user }
     }
