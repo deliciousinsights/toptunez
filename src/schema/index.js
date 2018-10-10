@@ -9,7 +9,11 @@ import usersSchema from './users.js'
 
 export function buildSchema() {
   let schema = mergeSchemas(customScalarsSchema, tunesSchema, usersSchema)
+  const transformer = schema.transformer
   schema = makeExecutableSchema(schema)
+  if (typeof transformer === 'function') {
+    schema = transformer(schema)
+  }
   return schema
 }
 
