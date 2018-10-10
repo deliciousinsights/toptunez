@@ -22,6 +22,7 @@ describe('Tunes controller', () => {
           firstName: 'John',
           lastName: 'Smith',
           password: 'secret',
+          roles: ['admin'],
         })
       ).token
     })

@@ -54,7 +54,7 @@ export function setupTuneRoutes(server) {
         },
       },
     },
-    requireAuth(),
+    requireAuth({ role: 'admin' }),
     createTune
   )
   server.post(
