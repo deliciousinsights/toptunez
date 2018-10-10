@@ -3,6 +3,7 @@ import restify from 'restify'
 import restifyValidation from 'node-restify-validation'
 
 import { setupTuneRoutes } from './controllers/tunes.js'
+import { setupUserRoutes } from './controllers/users.js'
 
 import './util/expose-restify-route-expandos.js'
 
@@ -40,6 +41,7 @@ export function createServer() {
   )
 
   setupTuneRoutes(server)
+  setupUserRoutes(server)
 
   return server
 }
