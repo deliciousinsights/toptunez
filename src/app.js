@@ -3,13 +3,14 @@ import restify from 'restify'
 import restifyValidation from 'node-restify-validation'
 
 import './util/expose-restify-route-expandos.js'
-import { jwt, totpCheck } from './util/middlewares.js'
+import { cors, jwt, totpCheck } from './util/middlewares.js'
 import { setupTuneRoutes } from './controllers/tunes.js'
 import { setupUserRoutes } from './controllers/users.js'
 
 const APP_NAME = 'TopTunez'
 
 export function createServer() {
+  const corsMW = cors()
   const server = restify.createServer({ name: APP_NAME })
 
   server.pre(restify.plugins.pre.dedupeSlashes())
@@ -17,6 +18,7 @@ export function createServer() {
   server.pre(restify.plugins.pre.strictQueryParams())
   server.pre(restify.plugins.pre.userAgentConnection())
 
+  server.pre(corsMW.preflight)
   server.pre(jwt())
   server.pre(totpCheck())
 
@@ -34,6 +36,8 @@ export function createServer() {
   server.use(restify.plugins.acceptParser(server.acceptable))
   server.use(restify.plugins.queryParser({ mapParams: false }))
   server.use(restify.plugins.jsonBodyParser())
+
+  server.use(corsMW.actual)
 
   server.use(
     restifyValidation.validationPlugin({
