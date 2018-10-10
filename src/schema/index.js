@@ -1,17 +1,18 @@
+import { createComplexityLimitRule } from 'graphql-validation-complexity'
+import depthLimit from 'graphql-depth-limit'
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import merge from 'lodash.merge'
 
 import customScalarsSchema from './custom-scalars.js'
 import tunesSchema from './tunes.js'
 
-// Production du schéma consolidé
-// ------------------------------
-
 export function buildSchema() {
   let schema = mergeSchemas(customScalarsSchema, tunesSchema)
   schema = makeExecutableSchema(schema)
   return schema
 }
+
+export const validationRules = [createComplexityLimitRule(1000), depthLimit(10)]
 
 // Fonctions utilitaires internes
 // ------------------------------

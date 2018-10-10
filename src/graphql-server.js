@@ -6,7 +6,7 @@ import { createServer } from 'http'
 import express from 'express'
 import { expressMiddleware } from '@apollo/server/express4'
 
-import { buildSchema } from './schema/index.js'
+import { buildSchema, validationRules } from './schema/index.js'
 import connection from './db/connection.js'
 
 const PORT = process.env.PORT || 3001
@@ -26,6 +26,7 @@ async function initServer() {
   const options = {
     schema: buildSchema(),
     plugins: [new ApolloServerPluginDrainHttpServer({ httpServer })],
+    validationRules,
   }
 
   const server = new ApolloServer(options)
