@@ -32,3 +32,45 @@ Content-Type: application/json
   "comment": "This tune rocks!",
   "offset": 1
 }
+
+### Sign in
+
+POST {{host}}/users
+Content-Type: application/json
+
+{
+  "email": "john@smith.com",
+  "firstName": "John",
+  "lastName": "Smith",
+  "password": "secret"
+}
+
+### Successful login
+
+POST {{host}}/sessions
+Content-Type: application/json
+
+{
+  "email": "john@smith.com",
+  "password": "secret"
+}
+
+### Unsuccessful login
+
+POST {{host}}/sessions
+Content-Type: application/json
+
+{
+  "email": "john@smith.com",
+  "password": "foobar"
+}
+
+### Invalid login
+
+POST {{host}}/sessions
+Content-Type: application/json
+
+{
+  "email": "john@smith.com",
+  "pass": "foobar"
+}
