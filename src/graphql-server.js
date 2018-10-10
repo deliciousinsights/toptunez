@@ -2,12 +2,14 @@ import { ApolloServer } from '@apollo/server'
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
 import bodyParser from 'body-parser'
 import chalk from 'chalk-template'
+import cors from 'cors'
 import { createServer } from 'http'
 import express from 'express'
 import { expressMiddleware } from '@apollo/server/express4'
 
 import { buildSchema, validationRules } from './schema/index.js'
 import connection from './db/connection.js'
+import { DEFAULT_CORS_OPTIONS as corsConfig } from './util/middlewares.js'
 import { getUserFromReq } from './util/graphql-jwt.js'
 
 const PORT = process.env.PORT || 3001
@@ -35,6 +37,7 @@ async function initServer() {
 
   expressApp.use(
     '/graphql',
+    cors(corsConfig),
     bodyParser.json(),
     expressMiddleware(server, { context: getUserFromReq })
   )

@@ -1,8 +1,38 @@
 import { config as configEnv } from 'dotenv-safe'
+import corsMiddleware from 'restify-cors-middleware2'
 import errors from 'restify-errors'
 import jwtMiddleware from 'restify-jwt-community'
+import ms from 'ms'
 
 configEnv()
+
+export const DEFAULT_CORS_OPTIONS = {
+  allowedHeaders: ['authorization', 'x-totp-token', 'content-type'],
+  exposedHeaders: ['api-version'],
+  origin: [
+    /^https?:\/\/(?:[\w.-]+\.)?delicious-insights.com$/,
+    'https://studio.apollographql.com',
+  ],
+  maxAge: ms('1 day'),
+}
+
+if (process.env.NODE_ENV !== 'production') {
+  DEFAULT_CORS_OPTIONS.origin.push(/^https?:\/\/localhost(?::\d+)?$/)
+}
+
+export function cors({
+  allowHeaders = DEFAULT_CORS_OPTIONS.allowedHeaders,
+  exposeHeaders = DEFAULT_CORS_OPTIONS.exposedHeaders,
+  origins = DEFAULT_CORS_OPTIONS.origin,
+  preflightMaxAge = DEFAULT_CORS_OPTIONS.maxAge,
+} = {}) {
+  return corsMiddleware({
+    allowHeaders,
+    exposeHeaders,
+    origins,
+    preflightMaxAge,
+  })
+}
 
 export function jwt() {
   return jwtMiddleware({
