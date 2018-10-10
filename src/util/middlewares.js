@@ -33,6 +33,29 @@ export function cors({
   })
 }
 
+const ONE_YEAR = 365 * 24 * 60 * 60
+
+export function apolloHSTS(maxAge = ONE_YEAR) {
+  return {
+    willSendResponse(requestContext) {
+      requestContext.http.response.headers.set(
+        'Strict-Transport-Security',
+        `max-age=${maxAge}; includeSubDomains`
+      )
+    },
+  }
+}
+
+export function hsts(maxAge = ONE_YEAR) {
+  return function hsts(req, res, next) {
+    res.header(
+      'Strict-Transport-Security',
+      `max-age=${maxAge}; includeSubDomains`
+    )
+    next()
+  }
+}
+
 export function jwt() {
   return jwtMiddleware({
     credentialsRequired: false,

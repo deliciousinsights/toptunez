@@ -2,9 +2,9 @@ import { ApolloServer } from 'apollo-server'
 import chalk from 'chalk'
 import { config as configEnv } from 'dotenv-safe'
 
+import { apolloHSTS, DEFAULT_CORS_OPTIONS as cors } from './util/middlewares.js'
 import { auth, getUserFromReq } from './util/graphql-jwt.js'
 import connection from './db/connection.js'
-import { DEFAULT_CORS_OPTIONS as cors } from './util/middlewares.js'
 import schema from './schema/index.js'
 
 configEnv()
@@ -30,6 +30,7 @@ async function initServer() {
       maxAge: cors.preflightMaxAge,
       origin: cors.origins,
     },
+    plugins: [apolloHSTS()],
     schemaDirectives: { auth: auth.directive },
     tracing: true,
   }

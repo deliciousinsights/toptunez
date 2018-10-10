@@ -3,7 +3,7 @@ import restify from 'restify'
 import restifyValidation from 'node-restify-validation'
 
 import './util/expose-restify-route-expandos.js'
-import { cors, jwt, totpCheck } from './util/middlewares.js'
+import { cors, hsts, jwt, totpCheck } from './util/middlewares.js'
 import { setupTuneRoutes } from './controllers/tunes.js'
 import { setupUserRoutes } from './controllers/users.js'
 
@@ -36,7 +36,7 @@ export function createServer() {
   server.use(restify.plugins.acceptParser(server.acceptable))
   server.use(restify.plugins.queryParser({ mapParams: false }))
   server.use(restify.plugins.jsonBodyParser())
-
+  server.use(hsts())
   server.use(corsMW.actual)
 
   server.use(
