@@ -14,12 +14,14 @@ describe('Tunes controller', () => {
     let token
 
     before(async () => {
+      await User.deleteMany({})
       token = (
         await User.signUp({
           email: 'john@smith.org',
           firstName: 'John',
           lastName: 'Smith',
           password: 'secret',
+          roles: ['admin'],
         })
       ).token
     })

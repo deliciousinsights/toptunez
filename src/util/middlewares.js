@@ -11,10 +11,26 @@ export function jwt() {
   })
 }
 
-export function requireAuth() {
+export function requireAuth({ role = null, roles = [] } = {}) {
+  // Massage arguments
+  role = String(role || '').trim()
+  if (role && roles.length === 0) {
+    roles = [role]
+  }
+
   return function checkAuth(req, res, next) {
     if (!req.user) {
       return next(new errors.NotAuthorizedError())
+    }
+
+    const missingRoles = roles.filter((role) => !req.user.roles.includes(role))
+
+    if (missingRoles.length > 0) {
+      return next(
+        new errors.NotAuthorizedError(
+          `Missing required roles on the user: ${missingRoles.join(', ')}`
+        )
+      )
     }
 
     next()
