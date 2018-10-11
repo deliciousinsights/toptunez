@@ -1,0 +1,36 @@
+service: toptunez
+
+frameworkVersion: '^1.32.0'
+
+provider:
+  apiName: toptunez
+  environment: ${file(./now.json):env}
+  memorySize: 512
+  name: aws
+  profile: serverless
+  region: ${opt:region, 'eu-west-3'}
+  runtime: nodejs8.10
+  stackName: toptunez
+  stage: ${opt:stage, 'dev'}
+  versionFunctions: false
+
+functions:
+  app:
+    description: The entire API, except when specific functions were mapped
+    events:
+      - http: ANY /
+      - http: ANY {proxy+}
+    handler: src/handler.handler
+  listTunes:
+    description: Filterable tune listing
+    events:
+      - http: GET /tunes/{proxy+}
+    handler: src/handler.handler
+  logIn:
+    description: Login to an existing account
+    events:
+      - http: POST /sessions/{proxy+}
+    handler: src/handler.handler
+
+plugins:
+  - serverless-offline
