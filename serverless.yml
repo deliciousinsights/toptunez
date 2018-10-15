@@ -1,36 +1,89 @@
+# Configuration de fonction AWS Lambda via Serverless
+# ===================================================
+
+# Réglages généraux
+# -----------------
+
+# Nom du service, pour le reporting / dashboarding de Serverless
 service: toptunez
 
+# Verrouillage semver du Serverless utilisé (bonne pratique)
 frameworkVersion: '^1.32.0'
 
+# Configuration AWS
+# -----------------
 provider:
+  # Nom de notre API, qui servira de base aux noms des diverses ressources AWS
+  # que va maintenir Serverless. Généralement le nom du service.
   apiName: toptunez
+  # Variables d’environnement à mettre en place.  Pour rester DRY, on prend
+  # celles qu’on avait déjà configurées pour le déploiement Zeit Now, dans le
+  # fichier en question (sous-clé `env`).
   environment: ${file(./now.json):env}
+  # RAM de l'instance. Ça démarre à 128, on met 512 pour être confort.
   memorySize: 512
+  # AWS, donc. Ça pourrait être plein d’autres trucs, notamment Azure et GCP.
   name: aws
+  # Profil AWS local à utiliser pour obtenir les credentials de connexion à
+  # l'API AWS (ce n'est pas mon profil par défaut). On a configuré ça en amont
+  # lors de la mise en place du SDK AWS sur la machine de dev.
   profile: serverless
+  # Région AWS où déployer notre code.  On autorise une option CLI `--region`,
+  # mais par défaut on utilisera `eu-west-3`, qui est Paris, pour une latence
+  # inexistante :-)
   region: ${opt:region, 'eu-west-3'}
+  # Runtime à utiliser. AWS permet au mieux Node 8.10 pour le moment (décembre
+  # 2018).
   runtime: nodejs8.10
+  # Nom de stack ; Serverless va convertir toute cette config `provider` en une
+  # définition AWS CloudFormation (une *stack*), autant lui donner un nom qui a
+  # un rapport à notre API.
   stackName: toptunez
+  # Niveau de déploiement (dev, recette, prod…), c'est assez libre, on autorise
+  # une option CLI `--stage` mais par défaut on met `dev`.
   stage: ${opt:stage, 'dev'}
+  # AWS versionne nos fonctions par défaut, à chaque déploiement, mais ça bouffe
+  # de la ressource et rend les logs de plus en plus lourds, et pour notre démo
+  # on n’en a pas besoin du tout, alors hop, on vire.
   versionFunctions: false
 
+# Configuration de nos fonctions
+# ------------------------------
+#
+# *(Notez que là, c’est presque cloud-agnostique ; seuls les détails des
+# `events` sont susceptibles de varier un peu)*
 functions:
+  # Handler générique, qui va *de facto* capturer toutes les requêtes qui ne
+  # matchent pas les autres événements. Le nom est libre.
   app:
+    # Description de gestion DevOp, apparaît dans les outils AWS
     description: The entire API, except when specific functions were mapped
+    # Déclencheurs, ici des HttpTriggers.
     events:
       - http: ANY /
       - http: ANY {proxy+}
+    # Gestionnaire. C’est un enrobage générique de notre serveur REST, en fait.
     handler: src/handler.handler
+  # Handler spécifique, qui nous permet juste d'avoir des stats distinctes (de
+  # perf, de coût…) pour le listing de morceaux.
   listTunes:
     description: Filterable tune listing
     events:
       - http: GET /tunes/{proxy+}
     handler: src/handler.handler
+  # Idem pour la connexion.
   logIn:
     description: Login to an existing account
     events:
       - http: POST /sessions/{proxy+}
     handler: src/handler.handler
 
+# Plugins Serverless
+# ------------------
+#
+# Il y a un écosystème riche de plugins qui rajoutent plein de possibilités.
+# Ici, on utilise le plus populaire…
 plugins:
+  # Environnement de débogage local, sur la machine de dev, pour nos fonctions.
+  # Simule plutôt pas mal les contextes d’appel en situation réelle.
   - serverless-offline

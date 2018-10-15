@@ -1,0 +1,26 @@
+<!DOCTYPE html><html lang="en"><head><title>handler</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content=""><meta name="groc-document-path" content="handler"><meta name="groc-project-path" content="src/handler.js"><link rel="stylesheet" type="text/css" media="all" href="assets/style.css"><script type="text/javascript" src="assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/handler.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="enrobage-serverless-du-serveur-rest">Enrobage Serverless du serveur REST</h1>
+<p>On fait ici au plus court, une approche transitoire classique : on enrobe un
+serveur REST complet dans un <em>handler</em> Serverless unique.  L’ensemble des
+routes HTTP frontales y amène, et le routage interne du serveur redistribue
+vers les fonctions gestionnaires.</p>
+<p>Ce n’est évidemment pas l’objectif final d’une architecture à base de
+fonctions ; avec cette approche, chaque fonction configurée embarque la
+totalité du serveur et de ses dépendances, ce qui est inutilement lourd et,
+potentiellement, coûteux.  Mais ça permet de commencer à exploiter un serveur
+existant en mode serverless (et donc, en payant à la consommation réelle, et
+non en continu).</p>
+<p>Vous trouverez la configuration des fonctions utilisant ce <em>handler</em> dans le
+fichier <code>serverless.yml</code> à la racine du projet.</p>
+<p>Toutefois, gardez à l’esprit qu’une « vraie » architecture serverless aurait
+en fait plusieurs handlers, au maximum un par fonction, sans Restify ni
+routeur, et dont les middlewares redeviendraient des fonctions classiques
+levant d’éventuelles exceptions, appelées au début de nos fonctions
+gestionnaires.  Ainsi, chaque fonction a une empreinte (code, dépendances)
+plus légère, et le découplage est meilleur.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> serverless = <span class="hljs-built_in">require</span>(<span class="hljs-string">'serverless-http'</span>)
+
+<span class="hljs-keyword">const</span> { createServer } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./app'</span>)
+<span class="hljs-keyword">const</span> server = createServer()</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Comme l’enrobage <code>serverless-http</code> attend une fonction de gestion de requête
+classique, et non un objet <code>Server</code> de Restify, on va chercher cette fonction
+dans son champ « privé ».  Pas parfait, mais ça tiendra…</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> handler = server._onRequest.bind(server)
+
+<span class="hljs-built_in">module</span>.exports.handler = serverless(handler)</div></div></div></div></body></html>
