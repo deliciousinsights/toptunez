@@ -1,0 +1,6 @@
+{
+  "reporter": ["html", "text", "lcov"],
+  "exclude": "src/**/*.spec.js",
+  "src": "src",
+  "all": true
+}

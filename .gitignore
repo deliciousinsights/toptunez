@@ -1,7 +1,20 @@
+# Environnement local de dev
 .env
+
+# Configuration Google App Engine (déploiement API)
 app.yaml
+
+# Rapports de couverture de test
 coverage
+
+# Modules npm
 node_modules
+
+# Configuration Zeit Now (déploiement API)
 now.json
+
+# Fichiers temporaires divers
 tmp
+
+# Évolutions à venir de la codebase
 TODO.md

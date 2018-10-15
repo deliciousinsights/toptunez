@@ -6,9 +6,11 @@
   "description": "A demo music recommendation API for Delicious Insights’ Node.js training, Dassault Aviation June 2021 Edition",
   "scripts": {
     "dev": "nodemon src/server.js",
+    "doc": "npx groc",
     "lint": "eslint src",
     "start": "node --experimental-json-modules --no-warnings src/server.js",
     "test": "cross-env NODE_ENV=test NODE_OPTIONS=\"--experimental-json-modules --no-warnings\" mocha",
+    "test:cov": "c8 npm run test",
     "test:watch": "npm test -- --watch"
   },
   "engines": {
@@ -88,6 +90,7 @@
     "url-regex-safe": "^2.0.2"
   },
   "devDependencies": {
+    "c8": "^7.7.3",
     "chai": "^4.3.4",
     "cross-env": "^7.0.3",
     "eslint": "^7.28.0",

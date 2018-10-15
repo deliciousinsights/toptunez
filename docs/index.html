@@ -1,0 +1,19 @@
+<!DOCTYPE html><html lang="en"><head><title>index</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content=""><meta name="groc-document-path" content="index"><meta name="groc-project-path" content="README.md"><link rel="stylesheet" type="text/css" media="all" href="assets/style.css"><script type="text/javascript" src="assets/behavior.js"></script><body><div id="meta"><div class="file-path">README.md</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="toptunez--appli-fil-rouge-pour-la-formation-nodejs-de-delicious-insights">TopTunez : appli fil rouge pour la formation Node.js de Delicious Insights</h1>
+<p><a href="https://delicious-insights.com/fr/formations/node-js/">Voir les détails de la formation</a></p>
+<p><a href="https://deliciousinsights.github.io/toptunez/">Voir le code annoté</a></p>
+<h2 id="mise-en-place">Mise en place</h2>
+<pre><code class="lang-bash">git <span class="hljs-built_in">clone</span> https://github.com/deliciousinsights/toptunez
+<span class="hljs-built_in">cd</span> toptunez
+npm install</code></pre>
+<h2 id="branches-et-tags">Branches et tags</h2>
+<ul>
+<li>La branche par défaut, <code>formation</code>, démarre sur le premier commit de l’historique, le socle initial.</li>
+<li>La branche <code>master</code> comprend tous les commits du déroulé, chacun étant multi-tagué. On peut donc revoir l’appli se construire en examinant l’historique commit par commit (aucun commit superflu).</li>
+</ul>
+<h2 id="gnrer-des-secrets-pour-lenvironnement">Générer des secrets pour l’environnement</h2>
+<p>Certaines fonctionnalités (JWT, Mongoose PII…) nécessitent le renseignement de clés 128-bit, dans le <code>.env</code> pour le dev et les tests, ou dans les configurations d’hébergement pour le déploiement.</p>
+<p>Un moyen simple de générer ces clés est la ligne de commande suivante :</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># Pour obtenir de l’hexa</span>
+node -pe <span class="hljs-string">"crypto.randomBytes(16).toString('hex')"</span>
+<span class="hljs-comment"># Pour obtenir du Base64, plus « aléatoire » d’aspect :-)</span>
+node -pe <span class="hljs-string">"crypto.randomBytes(24).toString('base64')"</span></code></pre></div></div></div></div></body></html>
