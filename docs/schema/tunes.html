@@ -1,0 +1,142 @@
+<!DOCTYPE html><html lang="en"><head><title>schema/tunes</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="schema/tunes"><meta name="groc-project-path" content="src/schema/tunes.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/schema/tunes.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="schmas-graphql--morceaux">Schémas GraphQL : Morceaux</h1></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> gql <span class="hljs-keyword">from</span> <span class="hljs-string">'graphql-tag'</span>
+
+<span class="hljs-keyword">import</span> Tune <span class="hljs-keyword">from</span> <span class="hljs-string">'../db/Tune.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="typedefs">TypeDefs</h2>
+<p>Les <em>typeDefs</em> sont le texte SDL (<em>Schema Definition Language</em>) ou le
+résultat de son analyse (comme ici, après être passé par le <em>tagger</em> de
+chaîne à gabarit <code>gql()</code>, fourni par Apollo Server).  Il s’agit
+conceptuellement de la partie <strong>déclarative</strong> du schéma, pas de son
+implémentation (ça, ce seront les <em>resolvers</em>).</p>
+<p>Besoin de réviser votre GraphQL ?</p>
+<ul>
+<li><a href="https://graphql.org/learn/">Sur GraphQL.org</a></li>
+<li><a href="https://www.howtographql.com/basics/2-core-concepts/">Sur How To GraphQL</a></li>
+<li><a href="https://facebook.github.io/graphql/June2018/#sec-Type-System">La spec
+officielle</a>
+(moins digeste !)</li>
+</ul></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> typeDefs = gql<span class="hljs-string">`
+  type Tune {
+    id: ID
+    album: String
+    artist: String!
+    createdAt: DateTime!
+    score: Int!
+    title: String!
+    url: URL
+    voteCount: Int!
+    votes: [TuneVote!]!
+  }
+
+  type TuneVote {
+    comment: String
+    createdAt: DateTime!
+    direction: TuneVoteDirection!
+  }
+
+  enum TuneVoteDirection {
+    UPVOTE
+    DOWNVOTE
+  }
+
+  enum TuneSort {
+    RECENT_FIRST
+    OLDEST_FIRST
+    ALBUM_ASC
+    ALBUM_DESC
+    ARTIST_ASC
+    ARTIST_DESC
+    SCORE_ASC
+    SCORE_DESC
+    TITLE_ASC
+    TITLE_DESC
+  }
+
+  input TuneInput {
+    album: String
+    artist: String!
+    title: String!
+    url: URL
+  }
+
+  input TuneVoteInput {
+    tuneID: ID!
+    direction: TuneVoteDirection!
+    comment: String
+  }
+
+  type TuneVotePayload {
+    tune: Tune!
+    vote: TuneVote!
+  }
+
+  type Query {
+    allTunes(
+      filter: String
+      page: Int = 1
+      pageSize: Int = 10
+      sorting: TuneSort = RECENT_FIRST
+    ): [Tune!]!
+  }
+
+  type Mutation {
+    createTune(input: TuneInput!): Tune! @auth(role: ADMIN)
+    voteOnTune(input: TuneVoteInput!): TuneVotePayload! @auth
+  }
+`</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="resolvers">Resolvers</h2>
+<p>C’est ici qu’on implémente concrètement la récupération des données pour les
+Queries, les modifications demandées par les Mutations, et éventuellement la
+production de valeur pour des champs qui n’existent pas à la base, ou ont des
+valeurs différentes dans la couche modèle (notamment pour les enums), de
+sorte que le <em>default field resolver</em> est insuffisant.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> resolvers = {
+  Mutation: { createTune, voteOnTune },
+  Query: { allTunes },
+  Tune: {
+    voteCount(tune) {
+      <span class="hljs-keyword">return</span> tune.votes.length
+    },
+  },
+  TuneVote: {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Ici typiquement, plutôt que le champ modèle <code>offset</code>, un peu technique
+avec ses -1/+1, on a préféré dans le schéma un concept plus métier,
+<code>direction</code>, basé sur une enum à nous ; il fallait donc fournir une
+résolution maison pour ce champ, que voici.</p>
+<p>La signature d’un <em>resolver</em> commence toujours par l’objet parent du
+niveau courant ; puisqu’ici le niveau est « un champ de vote », le niveau
+parent est le vote en question. On n’a pas besoin des 3 arguments
+supplémentaires (query, context, info) donc on ne les déclare même pas.</p></div></div><div class="code"><div class="wrapper">    direction(vote) {
+      <span class="hljs-keyword">return</span> vote.offset &gt; <span class="hljs-number">0</span> ? <span class="hljs-string">'UPVOTE'</span> : <span class="hljs-string">'DOWNVOTE'</span>
+    },
+  },
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="query-resolver-alltunes-">Query resolver : <code>allTunes</code></h3>
+<p>La signature d’un <em>resolver</em> commence toujours par l’objet parent du niveau
+courant, mais pour des queries et mutations, il n’y a pas de parent, c’est la
+racine du schéma : on l’appelle par convention <code>root</code> et on s’en sert très
+rarement.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">allTunes</span>(<span class="hljs-params">root, { filter, page, pageSize, sorting }</span>) </span>{
+  <span class="hljs-keyword">const</span> { tunes } = <span class="hljs-keyword">await</span> Tune.search({
+    filter,
+    page,
+    pageSize,</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Autre mise en correspondance entre une enum maison et les données
+techniques de la couche modèle, pour passer par exemple de
+<code>&#39;RECENT_FIRST&#39;</code> à <code>&#39;-createdAt&#39;</code>.  Voir l’algo plus bas.</p></div></div><div class="code"><div class="wrapper">    sorting: mapTuneSorting(sorting),
+  })
+  <span class="hljs-keyword">return</span> tunes
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mutation-resolver-createtune-">Mutation resolver : <code>createTune</code></h3></div></div><div class="code"><div class="wrapper"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">createTune</span>(<span class="hljs-params">root, { input }</span>) </span>{
+  <span class="hljs-keyword">return</span> Tune.create(input)
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mutation-resolver-voteontune-">Mutation resolver : <code>voteOnTune</code></h3></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">voteOnTune</span>(<span class="hljs-params">root, { input: { comment, direction, tuneID } }</span>) </span>{
+  <span class="hljs-keyword">let</span> tune = <span class="hljs-keyword">await</span> Tune.findById(tuneID)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Là aussi, mapping entre l’enum du schéma et le champ technique, en somme
+l’inverse du <em>resolver</em> pour <code>TuneVote#direction</code> plus haut.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">const</span> offset = direction === <span class="hljs-string">'UPVOTE'</span> ? <span class="hljs-number">1</span> : -<span class="hljs-number">1</span>
+  tune = <span class="hljs-keyword">await</span> tune.vote({ comment, offset })
+
+  <span class="hljs-keyword">const</span> vote = tune.votes[tune.votes.length - <span class="hljs-number">1</span>]
+
+  <span class="hljs-keyword">return</span> { tune, vote }
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Notre combinaison de schémas maison suppose des objets avec <code>typeDefs</code> (les
+définitions, généralement des Strings SDL) et <code>resolvers</code>. Voir
+<code>src/schema/index.js</code> pour la combinaison.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> { typeDefs, resolvers }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="fonctions-utilitaires-internes">Fonctions utilitaires internes</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Cette fonction passe des valeurs d’enum du schéma pour <code>TuneVoteDirection</code>
+aux chaînes de tri de la couche technique du modèle, interprétables par
+Mongoose.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">mapTuneSorting</span>(<span class="hljs-params">tuneSort</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p><code>RECENT_FIRST</code> et <code>OLDEST_FIRST</code> n&#39;ont pas de rapport syntaxique au champ
+sous-jacent, <code>createdAt</code>, donc on fait un cas à part.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">if</span> (tuneSort === <span class="hljs-string">'RECENT_FIRST'</span> || tuneSort === <span class="hljs-string">'OLDEST_FIRST'</span>) {
+    <span class="hljs-keyword">return</span> <span class="hljs-string">`<span class="hljs-subst">${tuneSort.startsWith('RECENT_') ? '-' : ''}</span>createdAt`</span>
+  }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Les autres valeurs ont le format <code>CHAMP_(ASC|DESC)</code>, on peut donc
+construire génériquement le code technique résultat.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">const</span> [field, direction] = tuneSort.toLowerCase().split(<span class="hljs-string">'_'</span>)
+  <span class="hljs-keyword">const</span> sign = direction === <span class="hljs-string">'desc'</span> ? <span class="hljs-string">'-'</span> : <span class="hljs-string">''</span>
+  <span class="hljs-keyword">return</span> <span class="hljs-string">`<span class="hljs-subst">${sign}</span><span class="hljs-subst">${field}</span>`</span>
+}</div></div></div></div></body></html>

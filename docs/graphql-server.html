@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="en"><head><title>graphql-server</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content=""><meta name="groc-document-path" content="graphql-server"><meta name="groc-project-path" content="src/graphql-server.js"><link rel="stylesheet" type="text/css" media="all" href="assets/style.css"><script type="text/javascript" src="assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/graphql-server.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="serveur-frontal-graphql">Serveur frontal GraphQL</h1></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> { ApolloServer } <span class="hljs-keyword">from</span> <span class="hljs-string">'@apollo/server'</span>
+<span class="hljs-keyword">import</span> { ApolloServerPluginDrainHttpServer } <span class="hljs-keyword">from</span> <span class="hljs-string">'@apollo/server/plugin/drainHttpServer'</span>
+<span class="hljs-keyword">import</span> bodyParser <span class="hljs-keyword">from</span> <span class="hljs-string">'body-parser'</span>
+<span class="hljs-keyword">import</span> chalk <span class="hljs-keyword">from</span> <span class="hljs-string">'chalk-template'</span>
+<span class="hljs-keyword">import</span> cors <span class="hljs-keyword">from</span> <span class="hljs-string">'cors'</span>
+<span class="hljs-keyword">import</span> { createServer } <span class="hljs-keyword">from</span> <span class="hljs-string">'http'</span>
+<span class="hljs-keyword">import</span> express <span class="hljs-keyword">from</span> <span class="hljs-string">'express'</span>
+<span class="hljs-keyword">import</span> { expressMiddleware } <span class="hljs-keyword">from</span> <span class="hljs-string">'@apollo/server/express4'</span>
+
+<span class="hljs-keyword">import</span> {
+  apolloHSTS,
+  DEFAULT_CORS_OPTIONS <span class="hljs-keyword">as</span> corsConfig,
+} <span class="hljs-keyword">from</span> <span class="hljs-string">'./util/middlewares.js'</span>
+<span class="hljs-keyword">import</span> { buildSchema, validationRules } <span class="hljs-keyword">from</span> <span class="hljs-string">'./schema/index.js'</span>
+<span class="hljs-keyword">import</span> connection <span class="hljs-keyword">from</span> <span class="hljs-string">'./db/connection.js'</span>
+<span class="hljs-keyword">import</span> { getUserFromReq } <span class="hljs-keyword">from</span> <span class="hljs-string">'./util/graphql-jwt.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Par défaut, notre serveur 100% GraphQL ouvre sur le port 3001, à la racine du
+domaine.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> PORT = process.env.PORT || <span class="hljs-number">3001</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Sans base, point de salut : on conditionne l’écoute HTTP à la bonne connexion
+à la base MongoDB.</p></div></div><div class="code"><div class="wrapper">connection.on(<span class="hljs-string">'open'</span>, initServer)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="graceful-shutdown">Graceful shutdown</h2>
+<p>Une fois le serveur lancé, on réagit avec ce gestionnaire au signal SIGTERM,
+qui nous serait envoyé par l’environnement d’hébergement pours demander un
+arrêt propre et rapide, par exemple dans le cadre d’une reconfiguration
+élastique.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">cleanUp</span>(<span class="hljs-params">server</span>) </span>{
+  <span class="hljs-built_in">console</span>.log(chalk<span class="hljs-string">`{cyan TopTunez GraphQL server shutting down…}`</span>)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On commence par fermer la socket d’écoute, afin de ne plus accepter de
+requête HTTP entrante ; on traite toujours celles déjà acceptées et en
+cours.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">await</span> server.stop()</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On peut ensuite attendre la fermeture de la connexion MongoDB ; idem,
+celle-ci attendra que ses requêtes en cours soient terminées.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">await</span> connection.close()
+  <span class="hljs-built_in">console</span>.log(chalk<span class="hljs-string">`{green TopTunez GraphQL server shutdown complete}`</span>)
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="lancement-du-serveur-apollo">Lancement du serveur Apollo</h2>
+<p>C’est ici qu’on configure le serveur et qu’on active l’écoute HTTP.  Une fois
+établi, il inscrit aussi le gestionnaire de <em>graceful shutdown</em> (qui n’a pas
+d’utilité avant cela).</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">initServer</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> expressApp = express()
+  <span class="hljs-keyword">const</span> httpServer = createServer(expressApp)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Pour plus de détails sur les options autorisées par le serveur Apollo,
+<a href="https://www.apollographql.com/docs/apollo-server/api/apollo-server/#options">consultez la doc
+dédiée</a>.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">const</span> options = {
+    schema: buildSchema(),
+    plugins: [
+      apolloHSTS(),
+      <span class="hljs-keyword">new</span> ApolloServerPluginDrainHttpServer({ httpServer }),
+    ],
+    validationRules,
+  }
+
+  <span class="hljs-keyword">const</span> server = <span class="hljs-keyword">new</span> ApolloServer(options)
+  <span class="hljs-keyword">await</span> server.start()
+
+  expressApp.use(
+    <span class="hljs-string">'/graphql'</span>,
+    cors(corsConfig),
+    bodyParser.json(),
+    expressMiddleware(server, { context: getUserFromReq })
+  )</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Et hop, écoute HTTP !</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">await</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>((resolve) =&gt; httpServer.listen({ port: PORT }, resolve))
+  <span class="hljs-built_in">console</span>.log(
+    chalk<span class="hljs-string">`🚀  {green TopTunez GraphQL server ready at} {cyan.underline http://localhost:<span class="hljs-subst">${PORT}</span>/graphql}`</span>
+  )</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Graceful shutdown</p></div></div><div class="code"><div class="wrapper">  process.on(<span class="hljs-string">'SIGTERM'</span>, () =&gt; cleanUp(server))
+  process.on(<span class="hljs-string">'SIGINT'</span>, () =&gt; cleanUp(server))
+}</div></div></div></div></body></html>

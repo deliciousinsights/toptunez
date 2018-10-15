@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="en"><head><title>schema/index</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="schema/index"><meta name="groc-project-path" content="src/schema/index.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/schema/index.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="schmas-graphql--schma-consolid">Schémas GraphQL : schéma consolidé</h1>
+<p>Notre schéma est découpé en sous-parties thématiques, chacune danss on
+module :</p>
+<ul>
+<li><code>custom-scalars</code> fournit des scalaires supplémentaires (ex. <code>DateTime</code>)</li>
+<li><code>tunes</code> s’occupe des Morceaux (création, listing, vote)</li>
+<li><code>users</code> des utilisateurs (inscription, connexion, bascule MFA)</li>
+</ul>
+<p>Ce module combine les parties tout en ajoutant les règles de validation qui
+mitigent les risques de DoS (limites de complexité et de profondeur).</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> { createComplexityLimitRule } <span class="hljs-keyword">from</span> <span class="hljs-string">'graphql-validation-complexity'</span>
+<span class="hljs-keyword">import</span> depthLimit <span class="hljs-keyword">from</span> <span class="hljs-string">'graphql-depth-limit'</span>
+<span class="hljs-keyword">import</span> { makeExecutableSchema } <span class="hljs-keyword">from</span> <span class="hljs-string">'@graphql-tools/schema'</span>
+<span class="hljs-keyword">import</span> merge <span class="hljs-keyword">from</span> <span class="hljs-string">'lodash.merge'</span>
+
+<span class="hljs-keyword">import</span> { authDirective } <span class="hljs-keyword">from</span> <span class="hljs-string">'../util/graphql-jwt.js'</span>
+<span class="hljs-keyword">import</span> customScalarsSchema <span class="hljs-keyword">from</span> <span class="hljs-string">'./custom-scalars.js'</span>
+<span class="hljs-keyword">import</span> tunesSchema <span class="hljs-keyword">from</span> <span class="hljs-string">'./tunes.js'</span>
+<span class="hljs-keyword">import</span> usersSchema <span class="hljs-keyword">from</span> <span class="hljs-string">'./users.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="production-du-schma-consolid">Production du schéma consolidé</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">buildSchema</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">let</span> schema = mergeSchemas(
+    authDirective(),
+    customScalarsSchema,
+    tunesSchema,
+    usersSchema
+  )
+  <span class="hljs-keyword">const</span> transformer = schema.transformer
+  schema = makeExecutableSchema(schema)
+  <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> transformer === <span class="hljs-string">'function'</span>) {
+    schema = transformer(schema)
+  }
+  <span class="hljs-keyword">return</span> schema
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> validationRules = [createComplexityLimitRule(<span class="hljs-number">1000</span>), depthLimit(<span class="hljs-number">10</span>)]</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="fonctions-utilitaires-internes">Fonctions utilitaires internes</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">mergeSchemas</span>(<span class="hljs-params">...schemas</span>) </span>{
+  <span class="hljs-keyword">const</span> result = {
+    typeDefs: [],
+    resolvers: {},
+    transformer: (schema) =&gt; schema,
+  }
+
+  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> { typeDefs = <span class="hljs-string">''</span>, resolvers = {}, transformer = <span class="hljs-literal">null</span> } <span class="hljs-keyword">of</span> schemas) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le <code>typeDefs</code> résultat est un tableau, donc on <code>push</code></p></div></div><div class="code"><div class="wrapper">    result.typeDefs.push(typeDefs)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Les <code>resolvers</code> sont des objets imbriqués, on fait donc une fusion
+profonde grâce à <code>lodash.merge</code>.</p></div></div><div class="code"><div class="wrapper">    merge(result.resolvers, resolvers)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Les <em>transformers</em> sont <em>curried</em> (appels de fonctions imbriqués)</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> transformer === <span class="hljs-string">'function'</span> &amp;&amp; transformer.length === <span class="hljs-number">1</span>) {
+      <span class="hljs-keyword">const</span> priorTrans = result.transformer
+      result.transformer = priorTrans
+        ? (x) =&gt; transformer(priorTrans(x))
+        : transformer
+    }
+  }
+
+  <span class="hljs-keyword">return</span> result
+}</div></div></div></div></body></html>

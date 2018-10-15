@@ -1,0 +1,112 @@
+<!DOCTYPE html><html lang="en"><head><title>db/User</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="db/User"><meta name="groc-project-path" content="src/db/User.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/db/User.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="modle-de-donnes-utilisateur">Modèle de données Utilisateur</h1></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> { config <span class="hljs-keyword">as</span> configEnv } <span class="hljs-keyword">from</span> <span class="hljs-string">'dotenv-safe'</span>
+<span class="hljs-keyword">import</span> emailRegex <span class="hljs-keyword">from</span> <span class="hljs-string">'email-regex'</span>
+<span class="hljs-keyword">import</span> jwt <span class="hljs-keyword">from</span> <span class="hljs-string">'jsonwebtoken'</span>
+<span class="hljs-keyword">import</span> { markFieldsAsPII } <span class="hljs-keyword">from</span> <span class="hljs-string">'mongoose-pii'</span>
+<span class="hljs-keyword">import</span> mongoose <span class="hljs-keyword">from</span> <span class="hljs-string">'mongoose'</span>
+
+<span class="hljs-keyword">import</span> { checkMFAToken, genMFAQRCodeURL, genMFASecret } <span class="hljs-keyword">from</span> <span class="hljs-string">'../util/totp.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Recours à la connexion, automatiquement établie au chargement.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> connection <span class="hljs-keyword">from</span> <span class="hljs-string">'./connection.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Vu qu’on a besoin de certaines variables d’environnement, pour le dev et les
+tests on s’assure que <code>dotenv-safe</code> les a récupérées et mises en place dans
+<code>process.env</code>.</p></div></div><div class="code"><div class="wrapper">configEnv()</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Nos JWT expirent à 30 minutes par défaut.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> JWT_EXPIRY = <span class="hljs-string">'30m'</span>
+<span class="hljs-keyword">const</span> JWT_SECRET = process.env.JWT_SECRET</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Les rôles autorisés se limitent pour le moment à <code>admin</code>, <code>manager</code> ou rien.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> ROLES = [<span class="hljs-string">'admin'</span>, <span class="hljs-string">'manager'</span>]</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="schma">Schéma</h2>
+<p>Dans Mongoose, pour accéder à des collections, on définit d’abord des
+<em>schémas</em>, sur base desquels on peut ensuite créer un ou plusieurs <em>modèles</em>,
+qui sont les classes ODM+métier de type ActiveRecord que le reste de la
+codebase pourra ensuite utiliser.</p>
+<p><a href="https://mongoosejs.com/docs/guide.html">Plus de détails sur les schémas
+Mongoose</a></p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> userSchema = <span class="hljs-keyword">new</span> mongoose.Schema(
+  {
+    email: {
+      index: <span class="hljs-literal">true</span>,
+      lowercase: <span class="hljs-literal">true</span>,
+      match: emailRegex({ exact: <span class="hljs-literal">true</span> }),
+      required: <span class="hljs-literal">true</span>,
+      type: <span class="hljs-built_in">String</span>,
+      unique: <span class="hljs-literal">true</span>,
+    },
+    firstName: { type: <span class="hljs-built_in">String</span>, required: <span class="hljs-literal">true</span> },
+    lastName: { type: <span class="hljs-built_in">String</span>, required: <span class="hljs-literal">true</span> },
+    mfaSecret: { type: <span class="hljs-built_in">String</span> },
+    password: { type: <span class="hljs-built_in">String</span>, required: <span class="hljs-literal">true</span> },
+    roles: { type: [{ type: <span class="hljs-built_in">String</span>, enum: ROLES }], index: <span class="hljs-literal">true</span> },
+  },
+  {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Voir ici les <a href="https://docs.mongodb.com/manual/reference/collation/#collation-document">détails de
+<code>strength</code></a>.</p></div></div><div class="code"><div class="wrapper">    collation: { locale: <span class="hljs-string">'en_US'</span>, strength: <span class="hljs-number">1</span> },</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le schéma est ici super strict : si on tente de sauver un document avec
+un champ qui n’y figure pas, il lève une exception.</p></div></div><div class="code"><div class="wrapper">    strict: <span class="hljs-string">'throw'</span>,</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Ajoute et maintient automatiquement des champs d’horodatage <code>createdAt</code>
+et <code>updatedAt</code>.</p></div></div><div class="code"><div class="wrapper">    timestamps: <span class="hljs-literal">true</span>,
+  }
+)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Afin de respecter l’état de l’art des bonnes pratiques de sécurité en termes
+de stockage de données, on utilise
+<a href="https://github.com/deliciousinsights/mongoose-pii#readme">Mongoose-PII</a>, un
+plugin qui va <em>hasher</em> de façon optimale les mots de passe.</p></div></div><div class="code"><div class="wrapper">userSchema.plugin(markFieldsAsPII, { passwordFields: <span class="hljs-string">'password'</span> })</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Pour faciliter le côté métier, on crée un champ virtuel, calculé, qui nous
+indique à tout instant si l’utilisateur a MFA actif.  Il suffit en fait de
+vérifier si <code>mfaSecret</code> n’est ni <code>null</code> ni <code>undefined</code> (d’où le double égale
+et non le triple, plus strict).</p>
+<p>Notez qu’ici on ne pourrait pas utiliser une fonction fléchée en argument, vu
+qu’on doit pouvoir garantir le <code>this</code> à l’intérieur, et donc le <em>binding</em> par
+Mongoose, ce qu’une fléchée ne permet pas.</p>
+<p><a href="https://mongoosejs.com/docs/guide.html#virtuals">Plus d’info sur les champs calculés
+Mongoose</a></p></div></div><div class="code"><div class="wrapper">userSchema.virtual(<span class="hljs-string">'requiresMFA'</span>).get(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.mfaSecret != <span class="hljs-literal">null</span>
+})</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="mthodes-mtier-statiques">Méthodes métier statiques</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-built_in">Object</span>.assign(userSchema.statics, {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Vérifie qu’un utilisateur, identifié par son e-mail, soit n’a pas MFA
+activé, soit l’a et que le TOTP (<code>token</code>) passé est alors valide.  Utilisé
+par un middleware REST et l’habilleur de contexte GraphQL pour confirmer
+l’authentification.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">async</span> checkMFA({ email, token }) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On récupère l’utilisateur identifié par cet e-mail, et s’il ne requiert
+pas de MFA, on renvoie <code>null</code> pour dire que tout est OK (pas d’erreur)…</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">const</span> user = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>.findOne({ email })
+    <span class="hljs-keyword">if</span> (!user.requiresMFA) {
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">null</span>
+    }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Si on exige MFA mais qu’on n’a pas reçu de TOTP, il manque un truc,
+l’authentification est incomplète !</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">if</span> (!token) {
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Missing TOTP Token (user has MFA enabled)'</span>)
+    }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Si le TOTP reçu n’est pas valide là tout de suite, l’authentification est
+incorrecte !</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">if</span> (!checkMFAToken({ secret: user.mfaSecret, token })) {
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Invalid TOTP Token'</span>)
+    }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On est toujours là ? MFA valide alors, youpi, pas de souci à renvoyer.</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">return</span> <span class="hljs-literal">null</span>
+  },</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Connecte un utilisateur existant</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">async</span> logIn({ email, password }) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>La méthode <code>authenticate()</code> est fournie par Mongoose-PII.  Elle va
+auto-chiffrer les champs de requête nécessaires (ici <code>email</code>), et
+réaliser une comparaison BCcrypt sécurisée sur le mot de passe,
+résistante notamment aux <em>timing attacks</em>.</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">const</span> user = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>.authenticate({ email, password })
+    <span class="hljs-keyword">if</span> (!user) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Échec ? OK, on renvoie <code>{ user: null }</code>.</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">return</span> { user }
+    }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Sinon, on génère un JWT à jour et on renvoie l’ensemble.</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">const</span> token = getTokenForUser(user)
+    <span class="hljs-keyword">return</span> { user, token }
+  },</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On expose la liste des rôles possibles comme propriété statique, pour
+permettre au reste du code (par exemple le schéma GraphQL) d’y accéder.</p></div></div><div class="code"><div class="wrapper">  ROLES,</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Inscription d’un nouvel utilisateur</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">async</span> signUp({ email, firstName, lastName, password, roles }) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On permet ici les rôles non pour que l‘API le permette aussi (elle ne le
+fait pas, ce serait dangereux), mais pour faciliter les constructions
+lors de nos tests, notamment pour avoir des utilisateurs de test qui
+soient administrateurs, et donc autorisés à créer des morceaux.</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">const</span> user = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>.create({
+      email,
+      firstName,
+      lastName,
+      password,
+      roles,
+    })</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On génère un JWT à jour et on renvoie l’ensemble, comme pour la
+connexion.</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">const</span> token = getTokenForUser(user)
+    <span class="hljs-keyword">return</span> { user, token }
+  },
+})</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="mthodes-mtier-dinstance">Méthodes métier d’instance</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-built_in">Object</span>.assign(userSchema.methods, {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Bascule l’activation du MFA.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">async</span> toggleMFA(enabled) {
+    <span class="hljs-keyword">let</span> mfaSecret = <span class="hljs-keyword">this</span>.mfaSecret</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On évite de changer le <em>MFA Secret</em> si en fait on est déjà activés et
+qu’on souhaite le rester, ça invaliderait les authentificateurs déjà
+configurés…</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">if</span> (enabled !== <span class="hljs-keyword">this</span>.requiresMFA) {
+      mfaSecret = enabled ? genMFASecret() : <span class="hljs-literal">null</span>
+      <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>.update({ mfaSecret })
+    }
+
+    <span class="hljs-keyword">const</span> result = { enabled }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Si on a MFA actif, on calcule la Data-URI d’un QR Code de configuration
+d’app tierce, type <a href="https://authy.com/">Authy</a>, pour faciliter la vie des
+utilisateurs et leur éviter de taper un URI <code>otp://</code> à la main…</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">if</span> (enabled) {
+      result.url = <span class="hljs-keyword">await</span> genMFAQRCodeURL({
+        identifier: <span class="hljs-keyword">this</span>.firstName,
+        secret: mfaSecret,
+      })
+    }
+
+    <span class="hljs-keyword">return</span> result
+  },
+})</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="modle">Modèle</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le premier argument est le nom du modèle dans la <em>registry</em> interne de
+Mongoose, qui va être utilisé par défaut pour déduire le nom de la collection
+(<code>users</code>), et servirait à la modélisation de relations N-N, par exemple si on
+associait les utilisateurs à leurs recos, au moyen du champ <code>ref</code> des
+descripteurs de champ dans les schémas.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> User = connection.model(<span class="hljs-string">'User'</span>, userSchema)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>L’export par défaut est la « classe » du modèle.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> User</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="mthodes-utilitaires-internes">Méthodes utilitaires internes</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Construit un JWT sur base d’un utilisateur, le <em>payload</em> restranscrivant ici
+uniquement son e-mail et ses rôles.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">getTokenForUser</span>(<span class="hljs-params">{ email, roles }</span>) </span>{
+  <span class="hljs-keyword">const</span> payload = { email, roles }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le calcul, la signature cryptographique et l’encodage Base64 du JWT sont
+ici, délégués au module de référence, <code>jsonwebtoken</code>, importé en <code>jwt</code>.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">return</span> jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY })
+}</div></div></div></div></body></html>

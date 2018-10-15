@@ -1,0 +1,6 @@
+{
+  "glob": ["src/**/*.js", "jest/**/*.js", "*.yaml", "*.yml", "*.md"],
+  "out": "./docs",
+  "github": false,
+  "--no-strip": true
+}

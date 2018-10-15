@@ -1,0 +1,62 @@
+<!DOCTYPE html><html lang="en"><head><title>app</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content=""><meta name="groc-document-path" content="app"><meta name="groc-project-path" content="src/app.js"><link rel="stylesheet" type="text/css" media="all" href="assets/style.css"><script type="text/javascript" src="assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/app.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="cur-de-serveur-rest">Cœur de serveur REST</h1>
+<p>Une bonne pratique récurrente consiste à séparer le cœur de nos serveurs (la
+définition des routes, middlewares, etc.) de leur écoute HTTP ; ça permet
+notamment de faciliter les tests, en isolant aisément les diverses instances
+du serveur d’un test à l’autre, voire en parallélisant les tests.</p>
+<p>Ce fichier fournit une fonction <code>createServer()</code> comme export par défaut,
+dont l’appel construit un serveur Restify pleinement configuré pour nos
+besoins, mais qui n’ouvre aucune écoute HTTP : ce sera, en exploitation
+directe, le rôle de <code>server.js</code>, présent dans le même dossier.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> errors <span class="hljs-keyword">from</span> <span class="hljs-string">'restify-errors'</span>
+<span class="hljs-keyword">import</span> restify <span class="hljs-keyword">from</span> <span class="hljs-string">'restify'</span>
+<span class="hljs-keyword">import</span> restifyValidation <span class="hljs-keyword">from</span> <span class="hljs-string">'node-restify-validation'</span>
+
+<span class="hljs-keyword">import</span> { cors, hsts, jwt, totpCheck } <span class="hljs-keyword">from</span> <span class="hljs-string">'./util/middlewares.js'</span>
+<span class="hljs-keyword">import</span> { setupTuneRoutes } <span class="hljs-keyword">from</span> <span class="hljs-string">'./controllers/tunes.js'</span>
+<span class="hljs-keyword">import</span> { setupUserRoutes } <span class="hljs-keyword">from</span> <span class="hljs-string">'./controllers/users.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Petits tweaks de compensation le temps que Restify 7 et son écosystème se
+recalent…</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> <span class="hljs-string">'./util/expose-restify-route-expandos.js'</span>
+
+const APP_NAME = <span class="hljs-string">'TopTunez'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>La fameuse fonction de configuration de serveur, notre export par défaut.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">createServer</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> corsMW = cors()</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ol>
+<li>Le serveur Restify à proprement parler.  Son nom sera consultable <em>a
+posteriori</em> dans <code>server.name</code>.  <a href="http://restify.com/docs/server-api/#createserver">De nombreuses options
+existent</a>.</li>
+</ol></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">const</span> server = restify.createServer({ name: APP_NAME })</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="plugins--pre-">Plugins « pre »</h2>
+<p>Leur exécution est garantie en amont du reste des plugins, middlewares et
+gestionnaires de routes.  L’ordre est significatif.  Vous trouverez <a href="http://restify.com/docs/plugins-api/#serverpre-plugins">leurs
+détails ici</a>.</p></div></div><div class="code"><div class="wrapper">  server.pre(restify.plugins.pre.dedupeSlashes())
+  server.pre(restify.plugins.pre.sanitizePath())
+  server.pre(restify.plugins.pre.strictQueryParams())
+  server.pre(restify.plugins.pre.userAgentConnection())</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Pre-check des requêtes Preflight (OPTIONS) en mode CORS.</p></div></div><div class="code"><div class="wrapper">  server.pre(corsMW.preflight)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Pre-check de décodage / vérification de signature des authentifications
+éventuelles par JWT.</p></div></div><div class="code"><div class="wrapper">  server.pre(jwt())</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Pre-check de vérification de MFA éventuel pour l’utilisateur actif, s’îl y
+en a un.</p></div></div><div class="code"><div class="wrapper">  server.pre(totpCheck())</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>À moins d’être en test (où on veut pouvoir aller aussi vite que la machine
+le permet), on appliquera un <em>Rate Limiting</em>. Restify fournit un plugin
+absolument nickel pour ça.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">if</span> (process.env.NODE_ENV !== <span class="hljs-string">'test'</span>) {
+    server.use(
+      restify.plugins.throttle({
+        burst: <span class="hljs-number">5</span>,
+        ip: <span class="hljs-literal">true</span>,
+        rate: <span class="hljs-number">1</span>,
+        setHeaders: <span class="hljs-literal">true</span>,
+      })
+    )
+  }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="plugins--use-">Plugins « use »</h2>
+<p>Leur exécution a lieu après les « pre », l’ordre restant significatif.</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Vérification de disponibilité d’au moins un des types de contenus attendus
+(en-tête HTTP de requête <code>Accept:</code>), en fonction des types enregistrés par
+notre serveur.</p></div></div><div class="code"><div class="wrapper">  server.use(restify.plugins.acceptParser(server.acceptable))</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Analyse de la <em>query string</em> pour stockage en tant qu’objet,
+potentiellement vide, dans <code>req.query</code> (sans duplication débile dans
+<code>req.params</code>).</p></div></div><div class="code"><div class="wrapper">  server.use(restify.plugins.queryParser({ mapParams: <span class="hljs-literal">false</span> }))</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Analyse du corps de requête, si c’est du JSON, pour stockage en tant
+qu’objet dans <code>req.body</code>.</p></div></div><div class="code"><div class="wrapper">  server.use(restify.plugins.jsonBodyParser())</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Exigence HTTPS pour les requêtes à venir (HSTS).  Plus de détails dans la
+doc de ce middleware, dans <code>src/util/middlewares.js</code></p></div></div><div class="code"><div class="wrapper">  server.use(hsts())</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Vérification de conformité des appels CORS (issus d’une autre origine que
+la nôtre).</p></div></div><div class="code"><div class="wrapper">  server.use(corsMW.actual)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Validateur de requêtes (exploite les déclarations <code>validation</code> dans les
+descripteurs de routes du serveur ; voir les fichiers dans
+<code>src/controllers/</code> pour des exemples concrets).</p></div></div><div class="code"><div class="wrapper">  server.use(
+    restifyValidation.validationPlugin({
+      forbidUndefinedVariables: <span class="hljs-literal">true</span>,
+      errorHandler: errors.BadRequestError,
+      validatorModels: restifyValidation.validatorModels,
+    })
+  )</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Ajout des routes des différentes ressources : Morceaux et Utilisateurs</p></div></div><div class="code"><div class="wrapper">  setupTuneRoutes(server)
+  setupUserRoutes(server)
+
+  <span class="hljs-keyword">return</span> server
+}</div></div></div></div></body></html>

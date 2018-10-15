@@ -1,0 +1,26 @@
+<!DOCTYPE html><html lang="en"><head><title>schema/custom-scalars</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="schema/custom-scalars"><meta name="groc-project-path" content="src/schema/custom-scalars.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/schema/custom-scalars.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="schmas-graphql--scalaires-personnaliss">Schémas GraphQL : scalaires personnalisés</h1>
+<p>GraphQL fournit de base un certain nombre de scalaires (ex. Int, Float,
+String, Bool) mais ne standardise pas de type Date/DateTime, et encore moins
+des types plus spécialisés, pour les URLs ou les adresses e-mail, par
+exemple.</p>
+<p>On utilise ici un des principaux modules npm qui définissent des scalaires
+génériques supplémentaires, dont on repend <code>DateTime</code>, <code>EmailAddress</code> et
+<code>URL</code>.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> {
+  DateTime,
+  DateTimeScalar,
+  EmailAddress,
+  EmailAddressScalar,
+  URL,
+  URLScalar,
+} <span class="hljs-keyword">from</span> <span class="hljs-string">'@saeris/graphql-scalars'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Notre combinaison de schémas maison suppose des objets avec <code>typeDefs</code> (les
+définitions, généralement des Strings SDL) et <code>resolvers</code>. Voir
+<code>src/schema/index.js</code> pour la combinaison.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> customScalarsSchema = {
+  typeDefs: <span class="hljs-string">`
+    <span class="hljs-subst">${DateTimeScalar}</span>
+    <span class="hljs-subst">${EmailAddressScalar}</span>
+    <span class="hljs-subst">${URLScalar}</span>
+  `</span>,
+  resolvers: { DateTime, EmailAddress, URL },
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> customScalarsSchema</div></div></div></div></body></html>

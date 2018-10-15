@@ -1,0 +1,111 @@
+<!DOCTYPE html><html lang="en"><head><title>util/middlewares</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="util/middlewares"><meta name="groc-project-path" content="src/util/middlewares.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/util/middlewares.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="middlewares-rest-pour-les-aspects-scuritaires">Middlewares REST pour les aspects sécuritaires</h1></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> { config <span class="hljs-keyword">as</span> configEnv } <span class="hljs-keyword">from</span> <span class="hljs-string">'dotenv-safe'</span>
+<span class="hljs-keyword">import</span> corsMiddleware <span class="hljs-keyword">from</span> <span class="hljs-string">'restify-cors-middleware2'</span>
+<span class="hljs-keyword">import</span> errors <span class="hljs-keyword">from</span> <span class="hljs-string">'restify-errors'</span>
+<span class="hljs-keyword">import</span> jwtMiddleware <span class="hljs-keyword">from</span> <span class="hljs-string">'restify-jwt-community'</span>
+<span class="hljs-keyword">import</span> ms <span class="hljs-keyword">from</span> <span class="hljs-string">'ms'</span>
+
+<span class="hljs-keyword">import</span> User <span class="hljs-keyword">from</span> <span class="hljs-string">'../db/User.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Vu qu’on a besoin de certaines variables d’environnement, pour le dev et les
+tests on s’assure que <code>dotenv-safe</code> les a récupérées et mises en place dans
+<code>process.env</code>.</p></div></div><div class="code"><div class="wrapper">configEnv()</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="options-cors-par-dfaut">Options CORS par défaut</h2>
+<p>Notre middleware s’en sert pour Restify, mais pour GraphQL, Apollo aura
+besoin des options elles-mêmes, qui d’ailleurs n’auront pas tout-à-fait le
+même nom, donc on les exportera à part (voir le <code>module.exports</code> plus loin).</p>
+<p>Pour plus de détails sur la sémantique des différentes options, consultez <a href="https://www.w3.org/TR/cors/#syntax">la
+spec des en-têtes</a> dans le standard W3C
+pour CORS.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> DEFAULT_CORS_OPTIONS = {
+  allowedHeaders: [<span class="hljs-string">'authorization'</span>, <span class="hljs-string">'x-totp-token'</span>, <span class="hljs-string">'content-type'</span>],
+  exposedHeaders: [<span class="hljs-string">'api-version'</span>],
+  origin: [
+    <span class="hljs-regexp">/^https?:\/\/(?:[\w.-]+\.)?delicious-insights.com$/</span>,
+    <span class="hljs-string">'https://studio.apollographql.com'</span>,
+  ],
+  maxAge: ms(<span class="hljs-string">'1 day'</span>),
+}
+
+<span class="hljs-keyword">if</span> (process.env.NODE_ENV !== <span class="hljs-string">'production'</span>) {
+  DEFAULT_CORS_OPTIONS.origin.push(<span class="hljs-regexp">/^https?:\/\/localhost(?::\d+)?$/</span>)
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="middleware-cors-pour-restify">Middleware CORS pour Restify</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">cors</span>(<span class="hljs-params">{
+  allowHeaders = DEFAULT_CORS_OPTIONS.allowedHeaders,
+  exposeHeaders = DEFAULT_CORS_OPTIONS.exposedHeaders,
+  origins = DEFAULT_CORS_OPTIONS.origin,
+  preflightMaxAge = DEFAULT_CORS_OPTIONS.maxAge,
+} = {}</span>) </span>{
+  <span class="hljs-keyword">return</span> corsMiddleware({
+    allowHeaders,
+    exposeHeaders,
+    origins,
+    preflightMaxAge,
+  })
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="middleware-hsts-pour-restify">Middleware HSTS pour Restify</h2>
+<p><a href="https://developer.mozilla.org/fr/docs/S%C3%A9curit%C3%A9/HTTP_Strict_Transport_Security">Plus d’infos sur
+HSTS</a></p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On valide l’exigence HTTS pour un an par défaut</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> ONE_YEAR = <span class="hljs-number">365</span> * <span class="hljs-number">24</span> * <span class="hljs-number">60</span> * <span class="hljs-number">60</span>
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">apolloHSTS</span>(<span class="hljs-params">maxAge = ONE_YEAR</span>) </span>{
+  <span class="hljs-keyword">return</span> {
+    <span class="hljs-keyword">async</span> requestDidStart() {
+      <span class="hljs-keyword">return</span> {
+        <span class="hljs-keyword">async</span> willSendResponse(requestContext) {
+          requestContext.response.http.headers.set(
+            <span class="hljs-string">'Strict-Transport-Security'</span>,
+            <span class="hljs-string">`max-age=<span class="hljs-subst">${maxAge}</span>; includeSubDomains`</span>
+          )
+        },
+      }
+    },
+  }
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">hsts</span>(<span class="hljs-params">maxAge = ONE_YEAR</span>) </span>{
+  <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">hsts</span>(<span class="hljs-params">req, res, next</span>) </span>{
+    res.header(
+      <span class="hljs-string">'Strict-Transport-Security'</span>,
+      <span class="hljs-string">`max-age=<span class="hljs-subst">${maxAge}</span>; includeSubDomains`</span>
+    )
+    next()
+  }
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="middlewares-dauthentification-jwt-pour-restify">Middlewares d’authentification JWT pour Restify</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Décodage et vérification de signature numérique de tokens existants.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">jwt</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> jwtMiddleware({</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Toujours préciser la liste d&#39;algorithmes autorisés, notamment pour
+échapper à &#39;NONE&#39;.</p></div></div><div class="code"><div class="wrapper">    algorithms: [<span class="hljs-string">'HS256'</span>],</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On n’exige pas l’authentification à ce niveau : c’est ensuite, route par
+route, qu’on le précisera.  Ici, on décode et on vérifie juste l’éventuel
+token.</p></div></div><div class="code"><div class="wrapper">    credentialsRequired: <span class="hljs-literal">false</span>,</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le secret utilisé pour signer numériquement les tokens (au sein du modèle
+<code>User</code>, du coup).</p></div></div><div class="code"><div class="wrapper">    secret: process.env.JWT_SECRET,
+  })
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Exigence d’authentification, voire de rôles sur l’utilisateur authentifié.</p>
+<p>Ce middleware va être incrusté dans les chaînes de gestionnaires de nos
+routes, au cas par cas, en amon tdu gestionnaire final afin de pouvoir le cas
+échéant interdire l’accès.</p>
+<p>Comme on aime les APIs agréables à lire, suivant qu’on exige un ou plusieurs
+rôles, on pourra utiliser <code>role</code> ou <code>roles</code> : on normalise en interne.  On
+peut aussi ne rien passer du tout : la valeur par défaut sur la droite (<code>=
+{}</code>) évite un souci à la déstructuration.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">requireAuth</span>(<span class="hljs-params">{ role = null, roles = [] } = {}</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>« Massage » des arguments pour avoir un <code>roles</code> <em>in fine</em></p></div></div><div class="code"><div class="wrapper">  role = <span class="hljs-built_in">String</span>(role || <span class="hljs-string">''</span>).trim()
+  <span class="hljs-keyword">if</span> (role &amp;&amp; roles.length === <span class="hljs-number">0</span>) {
+    roles = [role]
+  }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le middleware proprement dit, qui consultera les éventuelles exigences de
+rôles dans sa <em>closure</em>.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">checkAuth</span>(<span class="hljs-params">req, res, next</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Pas de user ? BLAM !</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">if</span> (!req.user) {
+      <span class="hljs-keyword">return</span> next(<span class="hljs-keyword">new</span> errors.NotAuthorizedError())
+    }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Manque-t-il des rôles parmi ceux exigés ?</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">const</span> missingRoles = roles.filter((role) =&gt; !req.user.roles.includes(role))</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Si oui, BLAM, mais en précisant quand même les rôles manquants, histoire
+d’être sympa.</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">if</span> (missingRoles.length &gt; <span class="hljs-number">0</span>) {
+      <span class="hljs-keyword">return</span> next(
+        <span class="hljs-keyword">new</span> errors.NotAuthorizedError(
+          <span class="hljs-string">`Missing required roles on the user: <span class="hljs-subst">${missingRoles.join(', ')}</span>`</span>
+        )
+      )
+    }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On est toujours là ? Tout roule alors !</p></div></div><div class="code"><div class="wrapper">    next()
+  }
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="middleware-de-vrification-mfa--totp">Middleware de vérification MFA / TOTP</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Si un utilisateur est présent, on extrait l’éventuel 2e facteur
+d’authentification, qu’on attend dans l’en-tête de requête HTTP
+<code>X-TOTP-Token</code> (par défaut, c’est modifiable), et on passe le tout pour
+vérification.  En pratique, si l’utilisateur n’exige pas MFA, on se fout du
+TOTP, présent ou non. Dans le cas contraire, on vérifie sa validité
+immédiate.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">totpCheck</span>(<span class="hljs-params">{ totpHeader = 'X-TOTP-Token' } = {}</span>) </span>{
+  <span class="hljs-keyword">return</span> <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">checkTOTP</span>(<span class="hljs-params">req, res</span>) </span>{
+    <span class="hljs-keyword">if</span> (!req.user) {
+      <span class="hljs-keyword">return</span>
+    }
+
+    <span class="hljs-keyword">const</span> token =
+      req.headers[totpHeader] || req.headers[totpHeader.toLowerCase()]</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>En cas de souci, <code>check</code> sera un objet erreur Restify, sinon <code>null</code>, ce
+qui ira très bien à <code>next()</code> dans les deux cas.</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">const</span> error = <span class="hljs-keyword">await</span> User.checkMFA({ email: req.user.email, token })
+    <span class="hljs-keyword">return</span> error ? <span class="hljs-keyword">new</span> errors.InvalidCredentialsError(error.message) : <span class="hljs-literal">null</span>
+  }
+}</div></div></div></div></body></html>

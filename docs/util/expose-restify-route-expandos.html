@@ -1,0 +1,24 @@
+<!DOCTYPE html><html lang="en"><head><title>util/expose-restify-route-expandos</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="util/expose-restify-route-expandos"><meta name="groc-project-path" content="src/util/expose-restify-route-expandos.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/util/expose-restify-route-expandos.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="compensations-temporaires-pour-restify-7">Compensations temporaires pour Restify 7</h1>
+<p>Restify 7 a changé son implémentation interne de routeur sans faire attention
+à certains comportements clés, ce qui a cassé pas mal de choses :-/  Des Pull
+Requests sont en cours, tant dans Restify que dans des modules tiers, mais en
+attendant, on compense ici…</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> Router <span class="hljs-keyword">from</span> <span class="hljs-string">'restify/lib/router.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="exposition-des-proprits-tendues--la-racine">Exposition des propriétés étendues à la racine</h2>
+<p>Le nouveau routeur de Restify 7 ne laisse plus les propriétés custom du
+descripteur de route à même l’obejt route résultat : il les stocke dans une
+propriété <code>spec</code> de cet objet.  Ça gêne actuellement divers modules, comme
+les validateurs de requête, qui s’attendaient à trouver leur propriété
+<code>validation</code> à même l’objet route et ne sont pas au courant de cette nouvelle
+propriété <code>spec</code>.  Du coup, en attendant qu’ils se mettent à jour, on
+<em>monkey-patche</em> la méthode interne <code>mount</code> du routeur pour répliquer à même
+la route les propriétés dans <code>spec</code> qui ne présentent pas de conflit.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> oldMount = Router.prototype.mount
+Router.prototype.mount = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">mount</span>(<span class="hljs-params">opts, handlers</span>) </span>{
+  <span class="hljs-keyword">const</span> route = oldMount.apply(<span class="hljs-keyword">this</span>, <span class="hljs-built_in">arguments</span>)
+
+  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> [prop, value] <span class="hljs-keyword">of</span> <span class="hljs-built_in">Object</span>.entries(route.spec)) {
+    <span class="hljs-keyword">if</span> (!<span class="hljs-built_in">Object</span>.prototype.hasOwnProperty.call(route, prop)) {
+      route[prop] = value
+    }
+  }
+
+  <span class="hljs-keyword">return</span> route
+}</div></div></div></div></body></html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html><html lang="en"><head><title>util/totp</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="util/totp"><meta name="groc-project-path" content="src/util/totp.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/util/totp.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="utilitaires-de-gestion-mfa--totp">Utilitaires de gestion MFA / TOTP</h1>
+<p>Ce module fournit plusieurs méthodes exploitées tant par les middlewares REST
+que par les habilleurs de contexte GraphQL, ainsi que par la couche métier du
+modèle <code>User</code>, pour tout ce qui touche à la génération et à la vérification
+de facteurs d’authentification secondaire par TOTP (<em>Time-based One-Time
+Passwords</em>).</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> otplib <span class="hljs-keyword">from</span> <span class="hljs-string">'otplib'</span>
+<span class="hljs-keyword">import</span> { promisify } <span class="hljs-keyword">from</span> <span class="hljs-string">'util'</span>
+<span class="hljs-keyword">import</span> QRCode <span class="hljs-keyword">from</span> <span class="hljs-string">'qrcode'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>L&#39;instrumentation des imports de Jest empêche l&#39;import nommé direct du module
+otplib, qui est en fait du CJS.  On doit donc ruser pour que ça marche
+pendant les tests.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> { authenticator } = otplib</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le module QRCode est basé callbacks Node (error-first), mais les promesses
+c’est mieux (par exemple, on peut faire du <code>async/await</code> avec).  Du coup, on
+utilise le très populaire <code>util.promisify()</code> noyau de Node.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> genQRCodeDataURI = promisify(QRCode.toDataURL)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="options-du-module-totp">Options du module TOTP</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper">authenticator.options = {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Tolérance sur TOTP passé : ici, celui de la fenêtre précédente est
+autorisé, mais pas plus loin en arrière.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-built_in">window</span>: <span class="hljs-number">1</span>,
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="utilitaires-publics">Utilitaires publics</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Vérifie qu’un TOTP (<code>token</code>) est valide, là tout de suite maintenant,
+vis-à-vis du <code>secret</code> qui aurait dû présider à sa génération (chez nous, ces
+secrets sont stockés dans les champs <code>mfaSecret</code> de chaque <code>User</code> pour qui
+MFA est activé).</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">checkMFAToken</span>(<span class="hljs-params">{ secret, token }</span>) </span>{
+  <span class="hljs-keyword">return</span> authenticator.verify({ secret, token })
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Génère un QR Code de belle taille pour la configuration d’une app
+d’authentification tierce (type <a href="https://authy.com/">Authy</a>) sur base du
+<em>secret</em> d’un utilisateur.  Ce dernier doit être identifiable par
+l’utilisateur final (s’ils ont par exemple plusieurs comptes sur le même
+service), ce qui est le rôle de <code>identifier</code>, dont le contenu est libre (chez
+nous ce sera le prénom).</p>
+<p>Le QR Code est renvoyé sous forme d’une Data-URI, qui peut être utilisée tant
+comme URL directe que comme source d’une image.  L’idée étant d’éviter à
+l’utilisateur final de taper à la main un URI <code>otp://…</code> un peu longuet,
+lorsqu’on peut plus facilement scanner le QR Code avec son appareil.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">genMFAQRCodeURL</span>(<span class="hljs-params">{ identifier, secret }</span>) </span>{
+  <span class="hljs-keyword">const</span> uri = authenticator.keyuri(identifier, <span class="hljs-string">'TopTunez'</span>, secret)
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">await</span> genQRCodeDataURI(uri, { scale: <span class="hljs-number">8</span> })
+  } <span class="hljs-keyword">catch</span> (err) {
+    <span class="hljs-keyword">return</span> <span class="hljs-string">`&lt;QRCode Generation Error: <span class="hljs-subst">${err.message}</span>&gt;`</span>
+  }
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Génère un secret sécurisé (chez nous, pour peupler le champ <code>mfaSecret</code> d’un
+document de modèle <code>User</code>).  En pratique, ça revient à un appel manuel à
+`crypto.randomBytes(…).toString(&#39;hex&#39;)`` mais bon, comme ça c’est générique,
+notamment pour un usage web.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">genMFASecret</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> authenticator.generateSecret()
+}</div></div></div></div></body></html>

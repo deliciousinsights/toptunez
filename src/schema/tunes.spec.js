@@ -1,3 +1,5 @@
+// Tests d’intégration du contrôleur GraphQL des morceaux
+// ======================================================
 import { ApolloServer } from '@apollo/server'
 import gql from 'graphql-tag'
 
@@ -7,21 +9,39 @@ import connection from '../db/connection.js'
 import Tune from '../db/Tune.js'
 import TUNES from '../../fixtures/tunes.js'
 
+// Un BSONID fait 12 octets, soit 24 caractères hexadécimaux.  Des doutes sur
+// les expressions rationnelles ? [Jetez donc un œil par
+// ici](https://regex101.com).
 const REGEX_BSONID = /^[0-9a-f]{24}$/
 
 describe('Tunes GraphQL schema', () => {
   const server = createTestServer()
 
+  // Penser à bien fermer la connexion MongoDB en fin de suite de test (de
+  // process parallélisé Jest, donc), pour éviter que le jeu de tests ne rende
+  // pas la main en raison du handle réseau resté ouvert.
   afterAll(() => connection.close())
+
+  // Tests des *queries*
+  // -------------------
 
   describe('Queries', () => {
     describe('allTunes', () => {
+      // Avant de tester les listings, on réinitialise la collection avec
+      // quelques morceaux qu’on maîtrise.
       beforeAll(async () => {
         await Tune.deleteMany({})
         await Tune.insertMany(TUNES)
       })
 
       it('should order recent-first by default', async () => {
+        // On s’est fait un minuscule utilitaire appelé `run()`, que vous verrez
+        // plus bas, qui exécute juste la requête GraphQL et en extrait la
+        // grappe résultat (champ `data`, parallèle à un éventuel champ `error`
+        // qu’on ne consulte pas).
+        //
+        // Pratique : on lui file directement le texte SDL, sous forme de
+        // `String`.
         const { allTunes } = await run(gql`
           {
             allTunes {
@@ -30,6 +50,11 @@ describe('Tunes GraphQL schema', () => {
           }
         `)
 
+        // On utilise ici le `expect()` global fourni par Jest, et ses
+        // [matchers](https://jestjs.io/docs/en/expect).  Le *matcher*
+        // `toEqual()` fait une comparaison profonde *exacte*, mais comme on est
+        // sur une grappe partielle garantie par GraphQL, c’est justement très
+        // adapté, on vérifie au passage que rien ne dépasse…
         expect(allTunes).toEqual([
           { title: 'World Falls Apart' },
           { title: 'Kenia' },
@@ -45,7 +70,6 @@ describe('Tunes GraphQL schema', () => {
             }
           }
         `)
-
         expect(allTunes).toEqual([
           { title: 'World Falls Apart' },
           { title: 'Sky' },
@@ -57,6 +81,10 @@ describe('Tunes GraphQL schema', () => {
 
   describe('Mutations', () => {
     describe('createTune', () => {
+      // Par souci de DRY, on construit dynamiquement une représentation
+      // GraphQL du `TuneInput` basé sur l’objet exporté par la *fixture*
+      // importée.  Par exemple, `{ foo: 'pouet', bar: 'baz' }` donnerait
+      // `foo: "pouet", bar: "baz"`
       const input = Object.entries(attrs)
         .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
         .join(', ')
@@ -118,7 +146,7 @@ describe('Tunes GraphQL schema', () => {
               }
             }
           }
-        `
+          `
       })
 
       it('should require authentication', () => {

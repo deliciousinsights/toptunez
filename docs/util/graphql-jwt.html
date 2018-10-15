@@ -1,0 +1,103 @@
+<!DOCTYPE html><html lang="en"><head><title>util/graphql-jwt</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="util/graphql-jwt"><meta name="groc-project-path" content="src/util/graphql-jwt.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/util/graphql-jwt.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="authentification--autorisation-pour-graphql">Authentification / autorisation pour GraphQL</h1>
+<p>Ce module fournit des habilleurs de contexte et directives sur-mesure pour
+implémenter l’authentification (JWT) et l’autorisation granulaire dans notre
+gestion GraphQL.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> { config <span class="hljs-keyword">as</span> configEnv } <span class="hljs-keyword">from</span> <span class="hljs-string">'dotenv-safe'</span>
+<span class="hljs-keyword">import</span> { defaultFieldResolver } <span class="hljs-keyword">from</span> <span class="hljs-string">'graphql/execution/execute.mjs'</span>
+<span class="hljs-keyword">import</span> errors <span class="hljs-keyword">from</span> <span class="hljs-string">'restify-errors'</span>
+<span class="hljs-keyword">import</span> { getDirective, MapperKind, mapSchema } <span class="hljs-keyword">from</span> <span class="hljs-string">'@graphql-tools/utils'</span>
+<span class="hljs-keyword">import</span> gql <span class="hljs-keyword">from</span> <span class="hljs-string">'graphql-tag'</span>
+<span class="hljs-keyword">import</span> jwt <span class="hljs-keyword">from</span> <span class="hljs-string">'jsonwebtoken'</span>
+
+<span class="hljs-keyword">import</span> User <span class="hljs-keyword">from</span> <span class="hljs-string">'../db/User.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Vu qu’on a besoin de certaines variables d’environnement, pour le dev et les
+tests on s’assure que <code>dotenv-safe</code> les a récupérées et mises en place dans
+<code>process.env</code>.</p></div></div><div class="code"><div class="wrapper">configEnv()
+
+<span class="hljs-keyword">const</span> JWT_SECRET = process.env.JWT_SECRET</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="habilleur-de-contexte">Habilleur de contexte</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Afin de fournir à l’ensemble de nos <em>resolvers</em> et directives maison
+l’utilisateur courant éventuel, extrait du token JWT qui serait présent dans
+l’en-tête de requête HTTP <code>Authorization</code> reçu par le serveur Apollo, on
+fournit cet habilleur de contexte, qui le cas échéant mettra la propriété
+<code>user</code> idoine dans le contexte transverse (3e argument des <em>resolvers</em>,
+notamment).</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">getUserFromReq</span>(<span class="hljs-params">{ req }</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ol>
+<li>On extrait le token encodé et signé de l’en-tête de requête HTTP</li>
+</ol></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">const</span> header = req.headers.authorization || <span class="hljs-string">''</span>
+  <span class="hljs-keyword">const</span> token = header.match(<span class="hljs-regexp">/^JWT (.+)$/</span>)?.[<span class="hljs-number">1</span>]
+  <span class="hljs-keyword">if</span> (!token) {
+    <span class="hljs-keyword">return</span> {}
+  }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ol>
+<li>On le décode et on vérifie sa signature. Toujours préciser la liste
+d&#39;algorithmes autorisés, notamment pour échapper à &#39;NONE&#39;.</li>
+</ol></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">const</span> user = jwt.verify(token, JWT_SECRET, { algorithms: [<span class="hljs-string">'HS256'</span>] })
+  <span class="hljs-keyword">if</span> (user) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>2a. Le cas échéant, on vérifie que son token MFA est valide</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">const</span> error = <span class="hljs-keyword">await</span> User.checkMFA({
+      email: user.email,
+      token: req.headers[<span class="hljs-string">'x-totp-token'</span>],
+    })
+    <span class="hljs-keyword">if</span> (error) {
+      <span class="hljs-keyword">throw</span> error
+    }
+  }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ol>
+<li>On renvoie les données à stocker dans le contexte GraphQL</li>
+</ol></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">return</span> { user }
+}
+
+<span class="hljs-keyword">const</span> authTypeMap = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Map</span>()</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="directive-maison-dautorisation">Directive maison d’autorisation</h2>
+<p>La manière la plus élégante et granulaire de gérer l’autorisation en GraphQL
+consiste à écrire une directive personnalisée.</p>
+<p>On s&#39;est basés sur la doc officielle de GraphQL-Tools à jour, notamment suite
+aux évolutions d&#39;implémentation des directives avec GraphQL 16 (arrêt des
+<em>visitors</em> et passage aux <em>transformers</em>).  Pour plus de détails, <a href="https://www.graphql-tools.com/docs/schema-directives#enforcing-access-permissions">voir cette
+section</a>.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">authDirective</span>(<span class="hljs-params">directiveName = 'auth'</span>) </span>{
+  <span class="hljs-keyword">return</span> {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Cette propriété contient la déclaration SDL de la directive, qui sera
+injectée dans le schéma.</p></div></div><div class="code"><div class="wrapper">    typeDefs: gql<span class="hljs-string">`
+      """
+      Marks a whole object or field / operation as requiring authentication,
+      possibly with an extra role requirement.
+      """
+      directive @<span class="hljs-subst">${directiveName}</span>(
+        """An optional extra role (RBAC) requirement"""
+        role: Role
+      ) on OBJECT | FIELD_DEFINITION
+    `</span>,</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le <em>transformer</em> implémente la directive en retravaillant le schéma au
+moyen de l&#39;utilitaire <code>mapSchema</code>, lequel prend notre schéma est un objet
+dont les propriétés couvrent tous les cas d&#39;application de la directive,
+tels que listés dans son SDL déclaratif.</p></div></div><div class="code"><div class="wrapper">    transformer(schema) {
+      <span class="hljs-keyword">return</span> mapSchema(schema, {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Cas <code>OBJECT</code> du SDL (directive sur type / objet complet)</p></div></div><div class="code"><div class="wrapper">        [MapperKind.TYPE](type) {
+          <span class="hljs-keyword">const</span> directive = getDirective(schema, type, directiveName)?.[<span class="hljs-number">0</span>]
+          <span class="hljs-keyword">if</span> (directive) {
+            authTypeMap.set(type.name, directive)
+          }
+        },</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Case <code>FIELD_DEFINITION</code> du SDL (directive sur champ / opération)</p></div></div><div class="code"><div class="wrapper">        [MapperKind.OBJECT_FIELD](fieldConfig, fieldName, typeName) {
+          <span class="hljs-keyword">const</span> directive =
+            getDirective(schema, fieldConfig, directiveName)?.[<span class="hljs-number">0</span>] ??
+            authTypeMap.get(typeName)
+          <span class="hljs-keyword">if</span> (!directive) {
+            <span class="hljs-keyword">return</span>
+          }
+
+          <span class="hljs-keyword">const</span> { resolve = defaultFieldResolver } = fieldConfig
+          <span class="hljs-keyword">const</span> { role: requiredRole } = directive
+
+          fieldConfig.resolve = (source, args, context, info) =&gt; {
+            <span class="hljs-keyword">if</span> (!context.user) {
+              <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> errors.NotAuthorizedError(
+                <span class="hljs-string">`<span class="hljs-subst">${fieldName}</span> requires authentication`</span>
+              )
+            }
+
+            <span class="hljs-keyword">if</span> (requiredRole) {
+              <span class="hljs-keyword">const</span> dbRole = requiredRole.toLowerCase()
+              <span class="hljs-keyword">if</span> (dbRole &amp;&amp; !(context.user.roles || []).includes(dbRole)) {
+                <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> errors.NotAuthorizedError(
+                  <span class="hljs-string">`<span class="hljs-subst">${fieldName}</span> requires the authenticated user to have role <span class="hljs-subst">${dbRole}</span>`</span>
+                )
+              }
+            }
+
+            <span class="hljs-keyword">return</span> resolve(source, args, context, info)
+          }
+
+          <span class="hljs-keyword">return</span> fieldConfig
+        },
+      })
+    },
+  }
+}</div></div></div></div></body></html>

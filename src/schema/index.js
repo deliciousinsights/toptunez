@@ -1,3 +1,15 @@
+// Schémas GraphQL : schéma consolidé
+// ==================================
+//
+// Notre schéma est découpé en sous-parties thématiques, chacune danss on
+// module :
+//
+// - `custom-scalars` fournit des scalaires supplémentaires (ex. `DateTime`)
+// - `tunes` s’occupe des Morceaux (création, listing, vote)
+// - `users` des utilisateurs (inscription, connexion, bascule MFA)
+//
+// Ce module combine les parties tout en ajoutant les règles de validation qui
+// mitigent les risques de DoS (limites de complexité et de profondeur).
 import { createComplexityLimitRule } from 'graphql-validation-complexity'
 import depthLimit from 'graphql-depth-limit'
 import { makeExecutableSchema } from '@graphql-tools/schema'
@@ -7,6 +19,9 @@ import { authDirective } from '../util/graphql-jwt.js'
 import customScalarsSchema from './custom-scalars.js'
 import tunesSchema from './tunes.js'
 import usersSchema from './users.js'
+
+// Production du schéma consolidé
+// ------------------------------
 
 export function buildSchema() {
   let schema = mergeSchemas(

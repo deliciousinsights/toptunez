@@ -1,0 +1,163 @@
+<!DOCTYPE html><html lang="en"><head><title>controllers/tunes.spec</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="controllers/tunes.spec"><meta name="groc-project-path" content="src/controllers/tunes.spec.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/controllers/tunes.spec.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="tests-dintgration-du-contrleur-rest-des-morceaux">Tests d’intégration du contrôleur REST des morceaux</h1></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> request <span class="hljs-keyword">from</span> <span class="hljs-string">'supertest'</span>
+
+<span class="hljs-keyword">import</span> connection <span class="hljs-keyword">from</span> <span class="hljs-string">'../db/connection.js'</span>
+<span class="hljs-keyword">import</span> { createServer } <span class="hljs-keyword">from</span> <span class="hljs-string">'../app.js'</span>
+<span class="hljs-keyword">import</span> Tune <span class="hljs-keyword">from</span> <span class="hljs-string">'../db/Tune.js'</span>
+<span class="hljs-keyword">import</span> TUNES <span class="hljs-keyword">from</span> <span class="hljs-string">'../../fixtures/tunes.js'</span>
+<span class="hljs-keyword">import</span> User <span class="hljs-keyword">from</span> <span class="hljs-string">'../db/User.js'</span>
+
+const app = createServer()</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Un BSONID fait 12 octets, soit 24 caractères hexadécimaux</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> REGEX_BSON = <span class="hljs-regexp">/^[0-9a-f]{24}$/</span>
+
+describe(<span class="hljs-string">'Tunes controller'</span>, () =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Penser à bien fermer la connexion MongoDB en fin de suite de test (de
+process parallélisé Jest, donc), pour éviter que le jeu de tests ne rende
+pas la main en raison du handle réseau resté ouvert.</p></div></div><div class="code"><div class="wrapper">  afterAll(() =&gt; connection.close())
+
+  describe(<span class="hljs-string">'Tune mutations'</span>, () =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Les divers tests authentifiés auront besoin d’un JWT en cours de
+validité : il est donc déclaré ici, dans leur <em>closure</em>.</p></div></div><div class="code"><div class="wrapper">    <span class="hljs-keyword">let</span> token</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Avant de lancer les tests de ce <code>describe()</code>, on crée un utilisateur dôté
+du rôle admin (pour être autorisé à créer un morceau, notamment) et on
+récupère son JWT.  Puisqu’il n’a pas de MFA actif, inutile de passer des
+<code>X-TOTP-Tokens</code> au fil de l’eau.</p></div></div><div class="code"><div class="wrapper">    beforeAll(<span class="hljs-keyword">async</span> () =&gt; {
+      token = (
+        <span class="hljs-keyword">await</span> User.signUp({
+          email: <span class="hljs-string">'john@smith.org'</span>,
+          firstName: <span class="hljs-string">'John'</span>,
+          lastName: <span class="hljs-string">'Smith'</span>,
+          password: <span class="hljs-string">'secret'</span>,
+          roles: [<span class="hljs-string">'admin'</span>],
+        })
+      ).token
+    })
+
+    it(<span class="hljs-string">'should allow tune creation'</span>, () =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Avec supertest, on construit une requête, qui peut ne prendre qu’une
+fonction serveur, auquel cas il créera automatiquement un serveur HTTP
+autour le temps du test, sur un port libre, ce qui permet de
+paralléliser des tests, chacun avec leur propre serveur HTTP, aisément.
+Le surcoût en temps est négligeable.</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">return</span> (
+        request(app)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On voit bien l‘intérêt DRY de la méthode <code>render()</code> du routeur.</p></div></div><div class="code"><div class="wrapper">          .post(app.router.render(<span class="hljs-string">'createTune'</span>))</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On s’authentifie…</p></div></div><div class="code"><div class="wrapper">          .set(<span class="hljs-string">'Authorization'</span>, <span class="hljs-string">`JWT <span class="hljs-subst">${token}</span>`</span>)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Et hop, les données du formulaire.  Filer un objet envoie
+automatiquement une requête JSON.</p></div></div><div class="code"><div class="wrapper">          .send({ artist: <span class="hljs-string">'Dash Berlin'</span>, title: <span class="hljs-string">'World Falls Apart'</span> })</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On s’attend à un succès en code HTTP 201 (Created)…</p></div></div><div class="code"><div class="wrapper">          .expect(<span class="hljs-number">201</span>)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>…avec l’ID du morceau fraîchement créé dans l’en-tête de réponse
+<code>X-Tune-ID</code> (nom qui nous est propre).</p></div></div><div class="code"><div class="wrapper">          .expect(<span class="hljs-string">'X-Tune-ID'</span>, REGEX_BSON)
+      )
+    })
+
+    it(<span class="hljs-string">'should allow votes on a tune'</span>, <span class="hljs-keyword">async</span> () =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On s’assure d’avoir un morceau manipulable sous la main, déjà.</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">const</span> tune = <span class="hljs-keyword">await</span> Tune.create({
+        artist: <span class="hljs-string">'Joachim Pastor'</span>,
+        title: <span class="hljs-string">'Kenia'</span>,
+      })
+
+      <span class="hljs-keyword">return</span> (
+        request(app)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Notez le deuxième argument de <code>render()</code>, qui fournit les
+<em>params</em> : les segments dynamiques du chemin de l’URL.</p></div></div><div class="code"><div class="wrapper">          .post(app.router.render(<span class="hljs-string">'voteOnTune'</span>, { tuneId: tune.id }))
+          .set(<span class="hljs-string">'Authorization'</span>, <span class="hljs-string">`JWT <span class="hljs-subst">${token}</span>`</span>)
+          .send({ offset: <span class="hljs-number">1</span>, comment: <span class="hljs-string">'This track is dope!'</span> })
+          .expect(<span class="hljs-number">201</span>)
+          .expect(<span class="hljs-string">'Cache-Control'</span>, <span class="hljs-string">'no-cache, no-store, must-revalidate'</span>)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Vérification de corps de réponse JSON (valeur exacte, pas de champ
+complémentaire possible, contrairement à ce qu’on fera pour les
+listings ; ordre des champs sans importance).</p></div></div><div class="code"><div class="wrapper">          .expect({ score: <span class="hljs-number">1</span>, voteCount: <span class="hljs-number">1</span> })
+      )
+    })
+  })
+
+  describe(<span class="hljs-string">'Tune listings'</span>, () =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Avant de tester les listings, on réinitialise la collection avec quelques
+morceaux qu’on maîtrise.</p></div></div><div class="code"><div class="wrapper">    beforeAll(<span class="hljs-keyword">async</span> () =&gt; {
+      <span class="hljs-keyword">await</span> Tune.deleteMany({})
+      <span class="hljs-keyword">await</span> Tune.insertMany(TUNES)
+    })
+
+    it(<span class="hljs-string">'should order recent-first by default'</span>, () =&gt; {
+      <span class="hljs-keyword">return</span> (
+        request(app)
+          .get(app.router.render(<span class="hljs-string">'listTunes'</span>))
+          .expect(<span class="hljs-number">200</span>)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Un requêteur Supertest étant une promesse, on peut parfaitement
+chaîner un <code>then()</code> pour enquiller nos propres assertions maison
+lorsque Supertest ne fournit pas ce qu’on veut.  Ici, pour faire un
+test laxiste sur le corps de réponse.</p></div></div><div class="code"><div class="wrapper">          .then((res) =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On passe ici au <code>expect()</code> global fourni par Jest, et à ses
+<a href="https://jestjs.io/docs/en/expect">matchers</a>.  Le <em>matcher</em>
+<code>toMatchObject()</code> est particulièrement sympa, puisqu’il fait une
+comparaison profonde <em>partielle</em>, très utile ici.</p></div></div><div class="code"><div class="wrapper">            expect(res.body.tunes).toMatchObject([
+              { title: <span class="hljs-string">'World Falls Apart'</span> },
+              { title: <span class="hljs-string">'Kenia'</span> },
+              { title: <span class="hljs-string">'Sky'</span> },
+            ])
+          })
+      )
+    })
+
+    it(<span class="hljs-string">'should retain recent-first ordering if not on v1.2+'</span>, () =&gt; {
+      <span class="hljs-keyword">return</span> (
+        request(app)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Notez le 3e argument de <code>render()</code>, qui fournit les paramètres de
+<em>query string</em> pour l’URL.</p></div></div><div class="code"><div class="wrapper">          .get(app.router.render(<span class="hljs-string">'listTunes'</span>, {}, { sortBy: <span class="hljs-string">'-title'</span> }))
+          .set(<span class="hljs-string">'Accept-Version'</span>, <span class="hljs-string">'1.0'</span>)
+          .expect(<span class="hljs-number">200</span>)
+          .then(({ body: { tunes } }) =&gt; {
+            expect(tunes).toMatchObject([
+              { title: <span class="hljs-string">'World Falls Apart'</span> },
+              { title: <span class="hljs-string">'Kenia'</span> },
+              { title: <span class="hljs-string">'Sky'</span> },
+            ])
+          })
+      )
+    })
+
+    it(<span class="hljs-string">'should honor `sortBy` argument if on v1.2+'</span>, () =&gt; {
+      <span class="hljs-keyword">return</span> request(app)
+        .get(app.router.render(<span class="hljs-string">'listTunes'</span>, {}, { sortBy: <span class="hljs-string">'-title'</span> }))
+        .set(<span class="hljs-string">'Accept-Version'</span>, <span class="hljs-string">'^1.2'</span>)
+        .expect(<span class="hljs-number">200</span>)
+        .then(({ body: { tunes } }) =&gt; {
+          expect(tunes).toMatchObject([
+            { title: <span class="hljs-string">'World Falls Apart'</span> },
+            { title: <span class="hljs-string">'Sky'</span> },
+            { title: <span class="hljs-string">'Kenia'</span> },
+          ])
+        })
+    })
+
+    it(<span class="hljs-string">'should provide links, even if empty'</span>, () =&gt; {
+      <span class="hljs-keyword">return</span> request(app)
+        .get(app.router.render(<span class="hljs-string">'listTunes'</span>))
+        .expect(<span class="hljs-number">200</span>)
+        .then(({ body: { links } }) =&gt; {
+          expect(links).toEqual({})
+        })
+    })
+
+    it(<span class="hljs-string">'should provide earlier links when beyond page 1'</span>, () =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On construit les liens attendus au format « objet », tels qu’ils
+figureront dans le <em>payload</em> JSON de la réponse…</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">const</span> expectedLinks = {
+        first: app.router.render(<span class="hljs-string">'listTunes'</span>, {}, { page: <span class="hljs-number">1</span>, pageSize: <span class="hljs-number">1</span> }),
+        prev: app.router.render(<span class="hljs-string">'listTunes'</span>, {}, { page: <span class="hljs-number">2</span>, pageSize: <span class="hljs-number">1</span> }),
+      }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>…mais on construit aussi l’en-tête de réponse HTTP <code>Link:</code> équivalent,
+puisque le contrôleur est censé peupler les deux, afin d’être aussi
+<em>HATEOAS-compliant</em> que possible.</p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">const</span> expectedLinkHeader = <span class="hljs-built_in">Object</span>.entries(expectedLinks)
+        .map(([rel, url]) =&gt; <span class="hljs-string">`&lt;<span class="hljs-subst">${url}</span>&gt;; rel="<span class="hljs-subst">${rel}</span>"`</span>)
+        .join(<span class="hljs-string">', '</span>)
+
+      <span class="hljs-keyword">return</span> request(app)
+        .get(app.router.render(<span class="hljs-string">'listTunes'</span>, {}, { page: <span class="hljs-number">3</span>, pageSize: <span class="hljs-number">1</span> }))
+        .expect(<span class="hljs-number">200</span>)
+        .expect(<span class="hljs-string">'Link'</span>, expectedLinkHeader)
+        .then((res) =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Notez la comparaison profonde stricte de <code>links</code>, avec le <em>matcher</em>
+Jest <code>toEqual()</code> (profond par défaut).  On ne pouvait pas utiliser
+le <code>.expect(obj)</code> de Supertest, car on ne vérifie ici qu’une partie
+du corps de réponse.</p></div></div><div class="code"><div class="wrapper">          expect(res.body.links).toEqual(expectedLinks)
+        })
+    })
+
+    it(<span class="hljs-string">'should provide later links when before last page'</span>, () =&gt; {
+      <span class="hljs-keyword">const</span> expectedLinks = {
+        last: app.router.render(<span class="hljs-string">'listTunes'</span>, {}, { page: <span class="hljs-number">3</span>, pageSize: <span class="hljs-number">1</span> }),
+        next: app.router.render(<span class="hljs-string">'listTunes'</span>, {}, { page: <span class="hljs-number">2</span>, pageSize: <span class="hljs-number">1</span> }),
+      }
+      <span class="hljs-keyword">const</span> expectedLinkHeader = <span class="hljs-built_in">Object</span>.entries(expectedLinks)
+        .map(([rel, url]) =&gt; <span class="hljs-string">`&lt;<span class="hljs-subst">${url}</span>&gt;; rel="<span class="hljs-subst">${rel}</span>"`</span>)
+        .join(<span class="hljs-string">', '</span>)
+
+      <span class="hljs-keyword">return</span> request(app)
+        .get(app.router.render(<span class="hljs-string">'listTunes'</span>, {}, { page: <span class="hljs-number">1</span>, pageSize: <span class="hljs-number">1</span> }))
+        .expect(<span class="hljs-number">200</span>)
+        .expect(<span class="hljs-string">'Link'</span>, expectedLinkHeader)
+        .then((res) =&gt; {
+          expect(res.body.links).toEqual(expectedLinks)
+        })
+    })
+  })
+})</div></div></div></div></body></html>

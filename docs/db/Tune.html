@@ -1,0 +1,106 @@
+<!DOCTYPE html><html lang="en"><head><title>db/Tune</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="db/Tune"><meta name="groc-project-path" content="src/db/Tune.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/db/Tune.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="modle-de-donnes-morceau">Modèle de données Morceau</h1></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> mongoose <span class="hljs-keyword">from</span> <span class="hljs-string">'mongoose'</span>
+<span class="hljs-keyword">import</span> urlRegex <span class="hljs-keyword">from</span> <span class="hljs-string">'url-regex'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Recours à la connexion, automatiquement établie au chargement.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> connection <span class="hljs-keyword">from</span> <span class="hljs-string">'./connection.js'</span>
+<span class="hljs-keyword">import</span> { getPageDescriptors } <span class="hljs-keyword">from</span> <span class="hljs-string">'../util/pagination.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="schma">Schéma</h2>
+<p>Dans Mongoose, pour accéder à des collections, on définit d’abord des
+<em>schémas</em>, sur base desquels on peut ensuite créer un ou plusieurs <em>modèles</em>,
+qui sont les classes ODM+métier de type ActiveRecord que le reste de la
+codebase pourra ensuite utiliser.</p>
+<p><a href="https://mongoosejs.com/docs/guide.html">Plus de détails sur les schémas
+Mongoose</a></p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> tuneSchema = <span class="hljs-keyword">new</span> mongoose.Schema(
+  {
+    album: <span class="hljs-built_in">String</span>,
+    artist: { type: <span class="hljs-built_in">String</span>, required: <span class="hljs-literal">true</span> },
+    score: { type: <span class="hljs-built_in">Number</span>, index: <span class="hljs-literal">true</span>, <span class="hljs-keyword">default</span>: <span class="hljs-number">0</span> },
+    title: { type: <span class="hljs-built_in">String</span>, required: <span class="hljs-literal">true</span> },
+    url: { type: <span class="hljs-built_in">String</span>, match: urlRegex({ exact: <span class="hljs-literal">true</span> }) },
+    votes: [
+      {
+        comment: <span class="hljs-built_in">String</span>,</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Notez que <code>default</code> est ici une fonction, qui sera appelée le moment
+venu (et non à l’initialisation du module, heureusement !). Ça
+renvoie en fait un <code>Number</code>, mais Mongoose construira un <code>Date</code> avec,
+vu le type du champ, du coup ça ira bien.</p></div></div><div class="code"><div class="wrapper">        createdAt: { type: <span class="hljs-built_in">Date</span>, <span class="hljs-keyword">default</span>: <span class="hljs-built_in">Date</span>.now },
+        offset: { type: <span class="hljs-built_in">Number</span>, required: <span class="hljs-literal">true</span>, min: -<span class="hljs-number">1</span>, max: <span class="hljs-number">1</span> },
+      },
+    ],
+  },
+  {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Voir ici les <a href="https://docs.mongodb.com/manual/reference/collation/#collation-document">détails de <code>strength</code></a>.</p></div></div><div class="code"><div class="wrapper">    collation: { locale: <span class="hljs-string">'en_US'</span>, strength: <span class="hljs-number">1</span> },</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le schéma est ici super strict : si on tente de sauver un document avec
+un champ qui n’y figure pas, il lève une exception.</p></div></div><div class="code"><div class="wrapper">    strict: <span class="hljs-string">'throw'</span>,</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Ajoute et maintient automatiquement des champs d’horodatage <code>createdAt</code>
+et <code>updatedAt</code>.</p></div></div><div class="code"><div class="wrapper">    timestamps: <span class="hljs-literal">true</span>,
+  }
+)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Les index multi-champs ne peuvent pas être décrits dans les descripteurs d’un
+champ unique, comme plus haut : on le fait donc par un appel ultérieur à
+<code>index()</code>.  Ici on définit un champ <em>full-text search</em>, pondéré sur 3 champs
+sources : <code>title</code>, <code>artist</code> et <code>album</code>.</p>
+<p><a href="https://docs.mongodb.com/manual/core/index-text/">Plus d’infos sur les index
+FTS</a></p></div></div><div class="code"><div class="wrapper">tuneSchema.index(
+  { album: <span class="hljs-string">'text'</span>, artist: <span class="hljs-string">'text'</span>, title: <span class="hljs-string">'text'</span> },
+  { name: <span class="hljs-string">'search'</span>, weights: { title: <span class="hljs-number">10</span>, artist: <span class="hljs-number">5</span>, album: <span class="hljs-number">1</span> } }
+)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On a besoin de doter notre schéma de méthodes métier : une sur le modèle
+lui-même, la « classe » en somme, donc une méthode <em>statique</em> :</p></div></div><div class="code"><div class="wrapper">tuneSchema.statics.search = search</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>… et une sur les documents, les instances donc (oui, je sais, avoir appelé ça
+<code>methods</code> n’était pas bien malin de la part de Mongoose) :</p></div></div><div class="code"><div class="wrapper">tuneSchema.methods.vote = vote</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="modle">Modèle</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le premier argument est le nom du modèle dans la <em>registry</em> interne de
+Mongoose, qui va être utilisé par défaut pour déduire le nom de la collection
+(<code>tunes</code>), et servirait à la modélisation de relations N-N, par exemple si on
+associait les utilisateurs à leurs recos, au moyen du champ <code>ref</code> des
+descripteurs de champ dans les schémas.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> Tune = connection.model(<span class="hljs-string">'Tune'</span>, tuneSchema)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>L’export par défaut est la « classe » du modèle.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> Tune</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="mthodes-mtier">Méthodes métier</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Méthode statique : listing filtré et paginé de morceaux.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">search</span>(<span class="hljs-params">{
+  filter,
+  page = 1,
+  pageSize = 10,
+  sorting = '-createdAt',
+} = {}</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Programmation défensive : on blinde les types et valeurs de <code>page</code> et
+<code>pageSize</code>. S’ils sont textuels, <code>Number()</code> les convertira, et le moindre
+caractère invalide produira un <code>NaN</code>, dont la <em>falsiness</em> nous amènera à
+droite du <code>||</code>, vers la valeur par défaut.</p></div></div><div class="code"><div class="wrapper">  page = <span class="hljs-built_in">Number</span>(page) || <span class="hljs-number">1</span>
+  pageSize = <span class="hljs-built_in">Number</span>(pageSize) || <span class="hljs-number">10</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Scope de base de nos travaux ; c’est en fait une <code>Query</code> Mongoose, un
+<em>builder</em> incrémental de requêtes, quoi. C’est une promesse, et tant que
+rien n’appelle <code>then()</code> dessus (par exemple implicitement au moyen d’un
+<code>await</code>), on peut continuer à affiner la requête.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">let</span> scope = <span class="hljs-keyword">this</span>.find().sort(sorting).limit(pageSize)
+
+  <span class="hljs-keyword">if</span> (page &gt; <span class="hljs-number">1</span>) {
+    scope = scope.skip((page - <span class="hljs-number">1</span>) * pageSize)
+  }
+
+  filter = <span class="hljs-built_in">String</span>(filter || <span class="hljs-string">''</span>).trim()
+  <span class="hljs-keyword">if</span> (filter) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Et voilà le recours à l’index full-text, grâce à l’opérateur de requête
+<code>$text</code>, dont on utilise le seul champ indispensable, <code>$search</code> (texte de
+la recherche).</p></div></div><div class="code"><div class="wrapper">    scope = scope.where({ $text: { $search: filter } })
+  }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On va recourir au <em>scope</em> pour calculer le nombre total de pages concernées
+par le contexte courant, mais si on exécutait ces opérations directement
+sur <code>scope</code>, on exécuterait la promesse sous-jacente, qui ne serait plus
+utilisable ensuite pour le listing à proprement parler. Alors on crée une
+nouvelle <code>Query</code> en clonant la première.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">const</span> countQuery = scope.clone()
+  <span class="hljs-keyword">const</span> totalCount = <span class="hljs-keyword">await</span> (filter
+    ? <span class="hljs-comment">// Si un filtre textuel est présent, ça change le nombre de résultats,</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>on doit donc utiliser un vrai comptage, plus lourd.</p></div></div><div class="code"><div class="wrapper">      countQuery.countDocuments()
+    : <span class="hljs-comment">// Si pas de filtre, on aura l’ensemble de la collection, dont la taille</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>est connue directement par ses méta-données, alors on utilise la bonne
+méthode pour aller (beaucoup !) plus vite.</p></div></div><div class="code"><div class="wrapper">      countQuery.estimatedDocumentCount())
+  <span class="hljs-keyword">const</span> links = getPageDescriptors({ page, pageSize, totalCount })
+
+  <span class="hljs-keyword">return</span> {
+    links,</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p><code>scope</code> est une promesse, alors qu’on renvoie un objet de données déjà
+résolues / accomplies, d’où l’<code>await</code> ici.</p></div></div><div class="code"><div class="wrapper">    tunes: <span class="hljs-keyword">await</span> scope,
+  }
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Méthode d’instance : vote sur le morceau actuel (<code>this</code>).</p></div></div><div class="code"><div class="wrapper"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">vote</span>(<span class="hljs-params">{ offset, comment }</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Toujours le blindage des arguments…</p></div></div><div class="code"><div class="wrapper">  offset = <span class="hljs-built_in">Math</span>.sign(<span class="hljs-built_in">Number</span>(offset) || <span class="hljs-number">0</span>)
+  comment = <span class="hljs-built_in">String</span>(comment || <span class="hljs-string">''</span>).trim()</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Finalement offset pourri ou nul ? On renvoie carrément <code>false</code>, bien fait
+pour toi ! (plus gentiment, on renverrait <code>this</code> intact).</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">if</span> (offset === <span class="hljs-number">0</span>) {
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>
+  }
+
+  <span class="hljs-keyword">const</span> vote = { offset }
+  <span class="hljs-keyword">if</span> (comment) {
+    vote.comment = comment
+  }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Des opérations de niveau Mongo comme les opérateurs <code>$inc</code> et <code>$push</code> sont
+préférables à des manips locales des champs suivies d’un <code>save()</code> (plus
+performant), mais ne peuvent pas mettre à jour l’instance mémoire courante
+du document.</p>
+<p>Plutôt que d’utiliser un <code>this.update()</code>, on va donc faire un
+<code>findOneAndUpdate()</code> au niveau de la connexion, pour profiter de son option
+<code>new: true</code>, qui renvoie le document après la mise à jour.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">return</span> Tune.findOneAndUpdate(
+    { _id: <span class="hljs-keyword">this</span>.id },</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Pour rappel, en Mongo les <em>updates</em> sont soit des documents de
+remplacement, sans opérateurs, soit des descripteurs de modification,
+avec opérateurs (champs dont le nom démarre par <code>$</code>).  Un opérateur a
+toujours pour valeur un objet, dont les clés sont les champs concernés,
+et les valeurs celles à appliquer pour ces champs, dans le cadre de cet
+opérateur.  Ça tord un peu la tête quand on vient du SQL, mais c’est au
+final bien plus pratique, surtout pour du multi-champs.</p></div></div><div class="code"><div class="wrapper">    { $inc: { score: offset }, $push: { votes: vote } },
+    { <span class="hljs-keyword">new</span>: <span class="hljs-literal">true</span> }
+  )
+}</div></div></div></div></body></html>

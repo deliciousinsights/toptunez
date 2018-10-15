@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="en"><head><title>schema/users</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="schema/users"><meta name="groc-project-path" content="src/schema/users.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/schema/users.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="schmas-graphql--utilisateurs">Schémas GraphQL : Utilisateurs</h1></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> gql <span class="hljs-keyword">from</span> <span class="hljs-string">'graphql-tag'</span>
+
+<span class="hljs-keyword">import</span> User <span class="hljs-keyword">from</span> <span class="hljs-string">'../db/User.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="typedefs">TypeDefs</h2>
+<p>Les <em>typeDefs</em> sont le texte SDL (<em>Schema Definition Language</em>) ou le
+résultat de son analyse (comme ici, après être passé par le <em>tagger</em> de
+chaîne à gabarit <code>gql()</code>, fourni par Apollo Server).  Il s’agit
+conceptuellement de la partie <strong>déclarative</strong> du schéma, pas de son
+implémentation (ça, ce seront les <em>resolvers</em>).</p>
+<p>Besoin de réviser votre GraphQL ?</p>
+<ul>
+<li><a href="https://graphql.org/learn/">Sur GraphQL.org</a></li>
+<li><a href="https://www.howtographql.com/basics/2-core-concepts/">Sur How To GraphQL</a></li>
+<li><a href="https://facebook.github.io/graphql/June2018/#sec-Type-System">La spec
+officielle</a>
+(moins digeste !)</li>
+</ul></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> typeDefs = gql<span class="hljs-string">`
+  type User {
+    id: ID
+    createdAt: DateTime!
+    email: EmailAddress!
+    firstName: String!
+    lastName: String!
+    roles: [Role!]! @auth(role: ADMIN)
+  }
+
+  enum Role {
+    ADMIN
+    MANAGER
+  }
+
+  input SignUpInput {
+    email: EmailAddress!
+    firstName: String!
+    lastName: String!
+    password: String!
+  }
+
+  input LogInInput {
+    email: EmailAddress!
+    password: String!
+  }
+
+  type ToggleMFAPayload {
+    enabled: Boolean!
+    url: URL
+  }
+
+  extend type Query {
+    user(email: EmailAddress!): User
+  }
+
+  extend type Mutation {
+    logIn(input: LogInInput!): String
+    signUp(input: SignUpInput!): String!
+    toggleMFA(enabled: Boolean!): ToggleMFAPayload! @auth
+  }
+`</span>
+
+<span class="hljs-keyword">const</span> resolvers = {
+  Mutation: { logIn, signUp, toggleMFA },</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Petite requête supplémentaire pour insister sur la granularité par champ
+des directives.</p></div></div><div class="code"><div class="wrapper">  Query: { user },</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Universalise la correspondance entre les chaînes GraphQL de rôles (en
+majuscules) et celles de la base de données (en minuscules).</p></div></div><div class="code"><div class="wrapper">  Role: <span class="hljs-built_in">Object</span>.fromEntries(
+    User.ROLES.map((role) =&gt; [role.toUpperCase(), role])
+  ),
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="resolvers">Resolvers</h2>
+<p>C’est ici qu’on implémente concrètement la récupération des données pour les
+Queries, les modifications demandées par les Mutations, et éventuellement la
+production de valeur pour des champs qui n’existent pas à la base, ou ont des
+valeurs différentes dans la couche modèle (notamment pour les enums), de
+sorte que le <em>default field resolver</em> est insuffisant.</p></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mutation-resolver-login-">Mutation resolver : <code>logIn</code></h3>
+<p>La signature d’un <em>resolver</em> commence toujours par l’objet parent du niveau
+courant, mais pour des queries et mutations, il n’y a pas de parent, c’est la
+racine du schéma : on l’appelle par convention <code>root</code> et on s’en sert très
+rarement.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">logIn</span>(<span class="hljs-params">root, { input }</span>) </span>{
+  <span class="hljs-keyword">const</span> { token } = <span class="hljs-keyword">await</span> User.logIn(input)
+  <span class="hljs-keyword">return</span> token
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mutation-resolver-signup-">Mutation resolver : <code>signUp</code></h3></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">signUp</span>(<span class="hljs-params">root, { input }</span>) </span>{
+  <span class="hljs-keyword">const</span> { token } = <span class="hljs-keyword">await</span> User.signUp(input)
+  <span class="hljs-keyword">return</span> token
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="mutation-resolver-togglemfa-">Mutation resolver : <code>toggleMFA</code></h3></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">toggleMFA</span>(<span class="hljs-params">root, { enabled }, { user: { email } }</span>) </span>{
+  <span class="hljs-keyword">const</span> user = <span class="hljs-keyword">await</span> User.findOne({ email })
+  <span class="hljs-keyword">return</span> user.toggleMFA(enabled)
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h3 id="query-resolver-user-">Query resolver : <code>user</code></h3></div></div><div class="code"><div class="wrapper"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">user</span>(<span class="hljs-params">root, { email }</span>) </span>{
+  <span class="hljs-keyword">return</span> User.findOne({ email })
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Notre combinaison de schémas maison suppose des objets avec <code>typeDefs</code> (les
+définitions, généralement des Strings SDL) et <code>resolvers</code>. Voir
+<code>src/schema/index.js</code> pour la combinaison.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> { resolvers, typeDefs }</div></div></div></div></body></html>

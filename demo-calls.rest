@@ -1,6 +1,13 @@
+# Tests manuels de l’API REST
+# ===========================
+#
+# Description d’appels pour tests interactifs grâce à l’extensions
+# VSCode "REST Client", dont l’installation est proprosée automatiquement
+# en ouvrant le projet.
+
 @host = http://localhost:3000
 
-### Unsuccessful (unauthenticated) tune creation
+### Création échouée (faute d’authentification) d’un morceau
 
 # @name createTune
 POST {{host}}/tunes
@@ -8,7 +15,7 @@ Content-Type: application/json
 
 < ./fixtures/tune.json
 
-### Successful (authenticated) tune creation
+### Création réussie (authentifiée) d’un morceau. Peut nécessiter un X-TOTP-Token une fois le MFA mis en place.
 
 # @name createTune
 POST {{host}}/tunes HTTP/1.1
@@ -17,21 +24,23 @@ Authorization: JWT {{logIn.response.body.token}}
 
 < ./fixtures/tune.json
 
-### Tune listing, invalid query
+
+### Listing de morceaux, requête invalide
 
 GET {{host}}/tunes?sortBy=foo&page=0&pageSize=15&pouet=coin
 Accept-Version: 1.0
-### Tune listing -- sortBy ignored (< v1.2>
+
+### Listing de morceaux, critère de tri ignoré (version API < v1.2)
 
 GET {{host}}/tunes?sortBy=title
 Accept-Version: 1.0
 
-### Tune listing -- sortBy used (v1.2+>
+### Listing de morceaux, critère de tri exploité (version API v1.2+)
 
 GET {{host}}/tunes?sortBy=title
 Accept-Version: ^1.2
 
-### Vote on tune
+### Vote sur morceau. Peut nécessiter un X-TOTP-Token une fois le MFA mis en place.
 
 POST {{host}}/tunes/{{createTune.response.headers.X-Tune-ID}}/votes
 Content-Type: application/json
@@ -42,7 +51,7 @@ Authorization: JWT {{logIn.response.body.token}}
   "offset": 1
 }
 
-### Sign in
+### Inscription (sign up)
 
 POST {{host}}/users
 Content-Type: application/json
@@ -54,7 +63,7 @@ Content-Type: application/json
   "password": "secret"
 }
 
-### Successful login
+### Connexion réussie (bons credentials)
 
 # @name logIn
 POST {{host}}/sessions
@@ -65,7 +74,7 @@ Content-Type: application/json
   "password": "secret"
 }
 
-### Unsuccessful login
+### Connexion échouée (mauvais credentials)
 
 POST {{host}}/sessions
 Content-Type: application/json
@@ -75,7 +84,7 @@ Content-Type: application/json
   "password": "foobar"
 }
 
-### Invalid login
+### Connexion invalide
 
 POST {{host}}/sessions
 Content-Type: application/json
@@ -85,7 +94,7 @@ Content-Type: application/json
   "pass": "foobar"
 }
 
-### Toggle MFA (existing user)
+### Activation du MFA sur utilisateur connecté. Peut nécessiter un X-TOTP-Token une fois le MFA mis en place.
 
 PATCH {{host}}/users/me/mfa
 Content-Type: application/json

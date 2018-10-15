@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="en"><head><title>controllers/users</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="controllers/users"><meta name="groc-project-path" content="src/controllers/users.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/controllers/users.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="contrleur-rest-des-morceaux">Contrôleur REST des morceaux</h1></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> errors <span class="hljs-keyword">from</span> <span class="hljs-string">'restify-errors'</span>
+
+<span class="hljs-keyword">import</span> { requireAuth } <span class="hljs-keyword">from</span> <span class="hljs-string">'../util/middlewares.js'</span>
+<span class="hljs-keyword">import</span> User <span class="hljs-keyword">from</span> <span class="hljs-string">'../db/User.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="configuration-des-routes">Configuration des routes</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Cette fonction, l‘export par défaut du module, configure nos routes d’API
+REST sur le serveur Restify fourni. Elle est appelée depuis la configuration
+applicative de <code>src/app.js</code></p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">setupUserRoutes</span>(<span class="hljs-params">server</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Route : inscription au service</p></div></div><div class="code"><div class="wrapper">  server.post(
+    {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Nommer nos routes nous permet par la suite, grâce au routeur et à sa
+méthode <code>render()</code>, de reconstituer nos URLs automatiquement.</p></div></div><div class="code"><div class="wrapper">      name: <span class="hljs-string">'signUp'</span>,
+      path: <span class="hljs-string">'/users'</span>,
+      validation: {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Validation du corps de requête</p></div></div><div class="code"><div class="wrapper">        content: {
+          email: { isEmail: <span class="hljs-literal">true</span>, isRequired: <span class="hljs-literal">true</span> },
+          firstName: { isRequired: <span class="hljs-literal">true</span> },
+          lastName: { isRequired: <span class="hljs-literal">true</span> },
+          password: { isRequired: <span class="hljs-literal">true</span> },
+        },
+      },
+    },
+    signUp
+  )</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Route : connexion au service (utilisateur existant)</p></div></div><div class="code"><div class="wrapper">  server.post(
+    {
+      name: <span class="hljs-string">'logIn'</span>,
+      path: <span class="hljs-string">'/sessions'</span>,
+      validation: {
+        content: {
+          email: { isEmail: <span class="hljs-literal">true</span>, isRequired: <span class="hljs-literal">true</span> },
+          password: { isRequired: <span class="hljs-literal">true</span> },
+        },
+      },
+    },
+    logIn
+  )</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Route : bascule d’activation du MFA (utilisateur courant)</p></div></div><div class="code"><div class="wrapper">  server.patch(
+    {
+      name: <span class="hljs-string">'toggleMFA'</span>,
+      path: <span class="hljs-string">'/users/me/mfa'</span>,
+      validation: {
+        content: {
+          enabled: { isBoolean: <span class="hljs-literal">true</span>, isRequired: <span class="hljs-literal">true</span> },
+        },
+      },
+    },</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Middleware à nous exigeant un utilisateur authentifié.</p></div></div><div class="code"><div class="wrapper">    requireAuth(),</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Le gestionnaire à proprement parler arrive en dernier argument.</p></div></div><div class="code"><div class="wrapper">    toggleMFA
+  )
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="gestionnaires-de-routes">Gestionnaires de routes</h2></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Gestionnaire de route : connexion</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">logIn</span>(<span class="hljs-params">req, res</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Puisqu’on a une validation de requête en amont, qui interdit notamment
+les champs non explicitement définis, on ne risque pas d’avoir un
+<code>req.body</code> dangereux / subversif ; il a exactement la structure de
+l’argument de <code>logIn</code> on peut donc le passer directement.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">const</span> { token } = <span class="hljs-keyword">await</span> User.logIn(req.body)
+  <span class="hljs-keyword">if</span> (token) {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On renvoie le JWT pour cet utilisateur en cas de connexion réussie.  Il
+permettra par la suite l’authentification au sein de l’en-tête de
+requête <code>Authorization</code>.</p></div></div><div class="code"><div class="wrapper">    res.send({ token })
+  } <span class="hljs-keyword">else</span> {
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> errors.InvalidCredentialsError()
+  }
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Gestionnaire de route : inscription</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">signUp</span>(<span class="hljs-params">req, res</span>) </span>{</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Puisqu’on a une validation de requête en amont, qui interdit notamment
+les champs non explicitement définis, on ne risque pas d’avoir un
+<code>req.body</code> dangereux / subversif ; il a exactement la structure de
+l’argument de <code>signUp</code> on peut donc le passer directement.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">const</span> { token } = <span class="hljs-keyword">await</span> User.signUp(req.body)
+  res.send(<span class="hljs-number">201</span>, { token })
+}</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Gestionnaire de route : bascule d’activation du MFA</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">toggleMFA</span>(<span class="hljs-params">req, res</span>) </span>{
+  <span class="hljs-keyword">const</span> user = <span class="hljs-keyword">await</span> User.findOne({ email: req.user.email })</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>La méthode métier renvoie le nouvel état actif (<code>enabled</code>), et si
+activation, une Data-URL pour le QR Code de configuration d’une app
+authentificatrice tierce, type <a href="https://authy.com/">Authy</a>.</p></div></div><div class="code"><div class="wrapper">  res.send(<span class="hljs-keyword">await</span> user.toggleMFA(req.body.enabled))
+}</div></div></div></div></body></html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html><html lang="en"><head><title>schema/tunes.spec</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="schema/tunes.spec"><meta name="groc-project-path" content="src/schema/tunes.spec.js"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path">src/schema/tunes.spec.js</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h1 id="tests-dintgration-du-contrleur-graphql-des-morceaux">Tests d’intégration du contrôleur GraphQL des morceaux</h1></div></div></div><div class="segment"><div class="code"><div class="wrapper"><span class="hljs-keyword">import</span> { ApolloServer } <span class="hljs-keyword">from</span> <span class="hljs-string">'@apollo/server'</span>
+<span class="hljs-keyword">import</span> gql <span class="hljs-keyword">from</span> <span class="hljs-string">'graphql-tag'</span>
+
+<span class="hljs-keyword">import</span> attrs <span class="hljs-keyword">from</span> <span class="hljs-string">'../../fixtures/tune.json'</span>
+<span class="hljs-keyword">import</span> { buildSchema } <span class="hljs-keyword">from</span> <span class="hljs-string">'./index.js'</span>
+<span class="hljs-keyword">import</span> connection <span class="hljs-keyword">from</span> <span class="hljs-string">'../db/connection.js'</span>
+<span class="hljs-keyword">import</span> Tune <span class="hljs-keyword">from</span> <span class="hljs-string">'../db/Tune.js'</span>
+<span class="hljs-keyword">import</span> TUNES <span class="hljs-keyword">from</span> <span class="hljs-string">'../../fixtures/tunes.js'</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Un BSONID fait 12 octets, soit 24 caractères hexadécimaux.  Des doutes sur
+les expressions rationnelles ? <a href="https://regex101.com">Jetez donc un œil par
+ici</a>.</p></div></div><div class="code"><div class="wrapper"><span class="hljs-keyword">const</span> REGEX_BSONID = <span class="hljs-regexp">/^[0-9a-f]{24}$/</span>
+
+describe(<span class="hljs-string">'Tunes GraphQL schema'</span>, () =&gt; {
+  <span class="hljs-keyword">const</span> server = createTestServer()</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Penser à bien fermer la connexion MongoDB en fin de suite de test (de
+process parallélisé Jest, donc), pour éviter que le jeu de tests ne rende
+pas la main en raison du handle réseau resté ouvert.</p></div></div><div class="code"><div class="wrapper">  afterAll(() =&gt; connection.close())</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="tests-des-queries-">Tests des <em>queries</em></h2></div></div><div class="code"><div class="wrapper">  describe(<span class="hljs-string">'Queries'</span>, () =&gt; {
+    describe(<span class="hljs-string">'allTunes'</span>, () =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Avant de tester les listings, on réinitialise la collection avec
+quelques morceaux qu’on maîtrise.</p></div></div><div class="code"><div class="wrapper">      beforeAll(<span class="hljs-keyword">async</span> () =&gt; {
+        <span class="hljs-keyword">await</span> Tune.deleteMany({})
+        <span class="hljs-keyword">await</span> Tune.insertMany(TUNES)
+      })
+
+      it(<span class="hljs-string">'should order recent-first by default'</span>, <span class="hljs-keyword">async</span> () =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On s’est fait un minuscule utilitaire appelé <code>run()</code>, que vous verrez
+plus bas, qui exécute juste la requête GraphQL et en extrait la
+grappe résultat (champ <code>data</code>, parallèle à un éventuel champ <code>error</code>
+qu’on ne consulte pas).</p>
+<p>Pratique : on lui file directement le texte SDL, sous forme de
+<code>String</code>.</p></div></div><div class="code"><div class="wrapper">        <span class="hljs-keyword">const</span> { allTunes } = <span class="hljs-keyword">await</span> run(gql<span class="hljs-string">`
+          {
+            allTunes {
+              title
+            }
+          }
+        `</span>)</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>On utilise ici le <code>expect()</code> global fourni par Jest, et ses
+<a href="https://jestjs.io/docs/en/expect">matchers</a>.  Le <em>matcher</em>
+<code>toEqual()</code> fait une comparaison profonde <em>exacte</em>, mais comme on est
+sur une grappe partielle garantie par GraphQL, c’est justement très
+adapté, on vérifie au passage que rien ne dépasse…</p></div></div><div class="code"><div class="wrapper">        expect(allTunes).toEqual([
+          { title: <span class="hljs-string">'World Falls Apart'</span> },
+          { title: <span class="hljs-string">'Kenia'</span> },
+          { title: <span class="hljs-string">'Sky'</span> },
+        ])
+      })
+
+      it(<span class="hljs-string">'should honor sorting'</span>, <span class="hljs-keyword">async</span> () =&gt; {
+        <span class="hljs-keyword">const</span> { allTunes } = <span class="hljs-keyword">await</span> run(gql<span class="hljs-string">`
+          {
+            allTunes(sorting: SCORE_DESC) {
+              title
+            }
+          }
+        `</span>)
+        expect(allTunes).toEqual([
+          { title: <span class="hljs-string">'World Falls Apart'</span> },
+          { title: <span class="hljs-string">'Sky'</span> },
+          { title: <span class="hljs-string">'Kenia'</span> },
+        ])
+      })
+    })
+  })
+
+  describe(<span class="hljs-string">'Mutations'</span>, () =&gt; {
+    describe(<span class="hljs-string">'createTune'</span>, () =&gt; {</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Par souci de DRY, on construit dynamiquement une représentation
+GraphQL du <code>TuneInput</code> basé sur l’objet exporté par la <em>fixture</em>
+importée.  Par exemple, <code>{ foo: &#39;pouet&#39;, bar: &#39;baz&#39; }</code> donnerait
+<code>foo: &quot;pouet&quot;, bar: &quot;baz&quot;</code></p></div></div><div class="code"><div class="wrapper">      <span class="hljs-keyword">const</span> input = <span class="hljs-built_in">Object</span>.entries(attrs)
+        .map(([key, value]) =&gt; <span class="hljs-string">`<span class="hljs-subst">${key}</span>: <span class="hljs-subst">${JSON.stringify(value)}</span>`</span>)
+        .join(<span class="hljs-string">', '</span>)
+
+      <span class="hljs-keyword">const</span> query = gql<span class="hljs-string">`
+        mutation {
+          createTune(input: { <span class="hljs-subst">${input}</span> }) {
+            id
+            album
+            artist
+            title
+            score
+            url
+          }
+        }
+      `</span>
+
+      it(<span class="hljs-string">'should require authentication'</span>, () =&gt; {
+        <span class="hljs-keyword">return</span> expect(run(query)).rejects.toThrow(
+          <span class="hljs-string">'createTune requires authentication'</span>
+        )
+      })
+
+      it(<span class="hljs-string">'should require admin privileges'</span>, () =&gt; {
+        <span class="hljs-keyword">return</span> expect(run(query, { roles: [] })).rejects.toThrow(
+          <span class="hljs-regexp">/createTune requires .* admin/</span>
+        )
+      })
+
+      it(<span class="hljs-string">'should allow tune creation'</span>, <span class="hljs-keyword">async</span> () =&gt; {
+        <span class="hljs-keyword">const</span> { createTune } = <span class="hljs-keyword">await</span> run(query, { roles: [<span class="hljs-string">'admin'</span>] })
+
+        expect(createTune).toEqual({
+          ...attrs,
+          score: <span class="hljs-number">0</span>,
+          id: expect.stringMatching(REGEX_BSONID),
+        })
+      })
+    })
+
+    describe(<span class="hljs-string">'voteOnTune'</span>, () =&gt; {
+      <span class="hljs-keyword">let</span> tune, query
+
+      beforeAll(<span class="hljs-keyword">async</span> () =&gt; {
+        tune = <span class="hljs-keyword">await</span> Tune.create({
+          artist: <span class="hljs-string">'Joachim Pastor'</span>,
+          title: <span class="hljs-string">'Kenia'</span>,
+        })
+
+        query = gql<span class="hljs-string">`
+          mutation {
+            voteOnTune(input: { tuneID: "<span class="hljs-subst">${tune.id}</span>", direction: UPVOTE, comment: "This track is dope!" }) {
+              tune {
+                score
+              }
+              vote {
+                comment
+                direction
+              }
+            }
+          }
+          `</span>
+      })
+
+      it(<span class="hljs-string">'should require authentication'</span>, () =&gt; {
+        <span class="hljs-keyword">return</span> expect(run(query)).rejects.toThrow(
+          <span class="hljs-string">'voteOnTune requires authentication'</span>
+        )
+      })
+
+      it(<span class="hljs-string">'should allow votes on a tune'</span>, <span class="hljs-keyword">async</span> () =&gt; {
+        <span class="hljs-keyword">const</span> { voteOnTune } = <span class="hljs-keyword">await</span> run(query, { roles: [] })
+
+        expect(voteOnTune).toMatchObject({
+          vote: { comment: <span class="hljs-string">'This track is dope!'</span>, direction: <span class="hljs-string">'UPVOTE'</span> },
+          tune: { score: <span class="hljs-number">1</span> },
+        })
+      })
+    })
+  })</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="fonctions-internes-utilitaires">Fonctions internes utilitaires</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper">  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">createTestServer</span>(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> ApolloServer({ schema: buildSchema() })
+  }</div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Ce mini-utilitaire est juste là pour ne pas avoir à aller chercher la grappe
+résultante à chaque exécution GraphQL, dans le champ <code>data</code>.  En revanche, si
+une erreur survient, on ne verrait donc pas le champ <code>error</code>, présent au même
+niveau.</p></div></div><div class="code"><div class="wrapper">  <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">run</span>(<span class="hljs-params">query, user = null</span>) </span>{
+    <span class="hljs-keyword">const</span> {
+      body: { singleResult: result },
+    } = <span class="hljs-keyword">await</span> server.executeOperation({ query }, { contextValue: { user } })
+
+    <span class="hljs-keyword">if</span> (result.errors) {
+      <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(result.errors[<span class="hljs-number">0</span>].message)
+    }
+
+    <span class="hljs-keyword">return</span> result.data
+  }
+})</div></div></div></div></body></html>

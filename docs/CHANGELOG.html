@@ -1,0 +1,94 @@
+<!DOCTYPE html><html lang="en"><head><title>CHANGELOG</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content=""><meta name="groc-document-path" content="CHANGELOG"><meta name="groc-project-path" content="CHANGELOG.md"><link rel="stylesheet" type="text/css" media="all" href="assets/style.css"><script type="text/javascript" src="assets/behavior.js"></script><body><div id="meta"><div class="file-path">CHANGELOG.md</div></div><div id="document"><div class="segment"><div class="comments "><div class="wrapper"><h2 id="fin-dcembre-2021">Fin décembre 2021</h2>
+<h3 id="outillage">Outillage</h3>
+<ul>
+<li>Mise à jour de toutes les dépendances</li>
+<li>Bascule vers Apollo 3 et GraphQL 16, ce qui a nécessité pas mal d&#39;adaptations / réécritures.</li>
+<li>Exigence de Node 14+ (pour les ESM natifs ; préférer 15+)</li>
+</ul>
+<h2 id="session-dcembre-2020">Session décembre 2020</h2>
+<h3 id="amliorations">Améliorations</h3>
+<ul>
+<li>Passage aux modules ESM natifs (y compris avec Jest). Nécessite Node 14+.</li>
+<li>Exploitation de la stack Apollo complète dans les tests GraphQL, afin
+notamment de tester les directives.</li>
+<li>Tests GraphQL autour de l&#39;authentification</li>
+</ul>
+<h3 id="outillage">Outillage</h3>
+<ul>
+<li>Mise à jour de toutes les dépendances</li>
+<li>Passage à &#39;apollo-server-testing&#39; pour les tests GraphQL</li>
+<li>Exigence de Node 14+ (pour les ESM natifs)</li>
+</ul>
+<h2 id="session-juin-2020">Session juin 2020</h2>
+<h3 id="amliorations">Améliorations</h3>
+<ul>
+<li>Normalisation (minuscules) de l’email utilisateur directement dans la couche
+modèle, ce qui simplifie les appels depuis les contrôleurs et <em>resolvers</em>.</li>
+<li>L’utilitaire <code>run</code> des tests GraphQL signale désormais correctement les
+erreurs d’interprétation de la requête par le moteur (ex. champ inconnu).</li>
+<li>Le <em>audit logger</em> du serveur REST retranscrit désormais les méta-données du
+champ <code>info</code> des erreurs « maison » (telles que celles de <code>restify-errors</code>).</li>
+<li>La signature du <em>middleware</em> <code>cors</code> préserve désormais les valeurs par défaut
+individuelles en cas d’appel avec seulement certaines options.</li>
+<li>Renommage fichier de <em>monkeypatch</em> du routeur de Restify.</li>
+</ul>
+<h3 id="outillage">Outillage</h3>
+<ul>
+<li>Mise à jour de la connexion Apollo Engine (détection auto de la clé
+<code>APOLLO_KEY</code>, nouveau mode de <em>reporting</em> automatique du schéma à jour).</li>
+<li>Mise à jour de toutes les dépendances et outils</li>
+</ul>
+<h2 id="session-janvier-2020">Session janvier 2020</h2>
+<h3 id="amliorations">Améliorations</h3>
+<ul>
+<li>On ne s&#39;amuse plus à gérer la révocation côté serveur des JWT, surtout qu&#39;ils
+expirent à 30 minutes de base… Ça simplifie la démo et le workflow pour se
+concentrer sur le cœur du truc.</li>
+<li>Bascule de <code>restify-request-validator</code> à <code>node-restify-validation</code>, nettement
+plus complet, moins friable et sans bug idiot sur la source d’analyse des
+paramètres du chemin d’URL.</li>
+<li>Correction de la fermeture finale des connexion MongoDB pendant les tests</li>
+<li>Refactoring des <code>reduce()</code> qui restaient, qui n’étaient finalement que des
+boucles déguisées, pour plus de lisibilité.</li>
+<li>Extraction de la logique de construction des descripteurs de pagination dans
+un utilitaire pré-fourni, pour ne pas faire de bruit inutile lors des étapes
+successives de construction (simulé dans le contrôleur, puis en méthode métier
+sur le modèle).</li>
+<li>Passage de <code>dotenv</code> à <code>dotenv-safe</code>, avec son <code>.env.example</code>, pour coller
+davantage aux meilleures pratiques.</li>
+<li>Utilisation de Mongoose-PII uniquement pour les champs de mot de passe, car on
+recommande plutôt du <em>Encryption at rest</em> pour le chiffrement des PII.</li>
+<li>Lecture unique des clés d’environnement, en accord avec les meilleures
+pratiques recommandées.</li>
+</ul>
+<h3 id="outillage">Outillage</h3>
+<ul>
+<li>Mise à jour de toutes les dépendances et outils</li>
+</ul>
+<h2 id="session-dcembre-2018">Session décembre 2018</h2>
+<h3 id="amliorations">Améliorations</h3>
+<ul>
+<li>Tâches explicites <code>dev</code> et <code>graphql:dev</code> pour le développement des serveurs</li>
+<li>Harmonisation <code>async</code>/<code>await</code> de <code>src/graphql-server.js</code>.</li>
+<li>Champ GraphQL virtuel <code>voteCount</code> avec <em>resolver</em> dédié.</li>
+<li>Simplification du <em>resolver</em> de <code>createTune</code>, en tirant parti de la
+prévalidation inhérente à GraphQL.</li>
+<li>Simplification des tests de réponse GraphQL, en tirant parti du fait que la
+grappe résultat ne contient par définition que ce qu’on a demandé : un
+<code>toEqual()</code> suffit, au lieu d’un <code>toMatchObject()</code>.</li>
+</ul>
+<h3 id="outillage">Outillage</h3>
+<ul>
+<li>Mise à jour de toutes les dépendances et outils</li>
+<li>Reformatage propre des commentaires et annotations</li>
+<li>Toutes les scripts npm sont prédéfinis sans analyseur de sortie VSCode, pour
+éviter le prompt VSCode à l’exécution (<code>.vscode/tasks.json</code>)</li>
+</ul>
+<h2 id="changements-post-session-inaugurale">Changements post-session inaugurale</h2>
+<ul>
+<li>Nettoyage général du code (DRY, réordonnancements…)</li>
+<li>Code annoté complet</li>
+<li>Fix tests contrôleur REST des <em>tunes</em> une fois le RBAC mis en place</li>
+<li>Plus d’extensions VS Code recommandées</li>
+<li>Restriction du contenu zippé pour les déploiements Azure</li>
+</ul></div></div></div></div></body></html>
