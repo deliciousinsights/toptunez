@@ -2,6 +2,8 @@ import restify from 'restify'
 
 import { setupTuneRoutes } from './controllers/tunes.js'
 
+import './util/expose-restify-route-expandos.js'
+
 const APP_NAME = 'TopTunez'
 
 export function createServer() {
