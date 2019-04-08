@@ -1,5 +1,6 @@
 import restify from 'restify'
 
+import './util/expose-restify-route-expandos.js'
 import { setupTuneRoutes } from './controllers/tunes.js'
 
 const APP_NAME = 'TopTunez'
