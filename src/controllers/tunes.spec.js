@@ -37,6 +37,22 @@ describe('Tunes controller', () => {
         })
     })
 
-    it.todo('should provide later links when before last page')
+    it('should provide later links when before last page', () => {
+      const expectedLinks = {
+        last: app.router.render('listTunes', {}, { page: 3, pageSize: 1 }),
+        next: app.router.render('listTunes', {}, { page: 2, pageSize: 1 }),
+      }
+      const expectedLinkHeader = Object.entries(expectedLinks)
+        .map(([rel, url]) => `<${url}>; rel="${rel}"`)
+        .join(', ')
+
+      return request(app)
+        .get(app.router.render('listTunes', {}, { page: 1, pageSize: 1 }))
+        .expect(200)
+        .expect('Link', expectedLinkHeader)
+        .then((res) => {
+          expect(res.body.links).toEqual(expectedLinks)
+        })
+    })
   })
 })
