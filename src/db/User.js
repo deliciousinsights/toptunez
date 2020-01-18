@@ -1,5 +1,12 @@
+import { config as configEnv } from 'dotenv-safe'
 import emailRegex from 'email-regex'
+import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
+
+configEnv()
+
+const JWT_EXPIRY = '30m'
+const JWT_SECRET = process.env.JWT_SECRET
 
 const userSchema = new mongoose.Schema(
   {
@@ -26,15 +33,26 @@ const userSchema = new mongoose.Schema(
 Object.assign(userSchema.statics, {
   async logIn({ email, password }) {
     const user = await this.findOne({ email, password })
-    return { user }
+    if (!user) {
+      return { user }
+    }
+
+    const token = getTokenForUser(user)
+    return { user, token }
   },
 
   async signUp({ email, firstName, lastName, password }) {
     const user = await this.create({ email, firstName, lastName, password })
-    return { user }
+    const token = getTokenForUser(user)
+    return { user, token }
   },
 })
 
 const User = mongoose.model('User', userSchema)
 
 export default User
+
+function getTokenForUser({ email }) {
+  const payload = { email }
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY })
+}
