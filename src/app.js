@@ -3,6 +3,7 @@ import restify from 'restify'
 import restifyValidation from 'node-restify-validation'
 
 import './util/expose-restify-route-expandos.js'
+import { jwt } from './util/middlewares.js'
 import { setupTuneRoutes } from './controllers/tunes.js'
 import { setupUserRoutes } from './controllers/users.js'
 
@@ -15,6 +16,8 @@ export function createServer() {
   server.pre(restify.plugins.pre.sanitizePath())
   server.pre(restify.plugins.pre.strictQueryParams())
   server.pre(restify.plugins.pre.userAgentConnection())
+
+  server.pre(jwt())
 
   if (process.env.NODE_ENV !== 'test') {
     server.use(

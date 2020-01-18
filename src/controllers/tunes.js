@@ -1,6 +1,7 @@
 import errors from 'restify-errors'
 import restify from 'restify'
 
+import { requireAuth } from '../util/middlewares.js'
 import Tune from '../db/Tune.js'
 
 const REGEX_BSON = /^[0-9a-f]{24}$/
@@ -57,6 +58,7 @@ export function setupTuneRoutes(server) {
         },
       },
     },
+    requireAuth(),
     createTune
   )
   server.post(
@@ -73,6 +75,7 @@ export function setupTuneRoutes(server) {
         },
       },
     },
+    requireAuth(),
     voteOnTune
   )
 }
