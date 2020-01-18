@@ -35,15 +35,15 @@ export function setupUserRoutes(server) {
 }
 
 async function logIn(req, res) {
-  const { user } = await User.logIn(req.body)
-  if (user) {
-    res.send({ user })
+  const { token } = await User.logIn(req.body)
+  if (token) {
+    res.send({ token })
   } else {
     return new errors.InvalidCredentialsError()
   }
 }
 
 async function signUp(req, res) {
-  const { user } = await User.signUp(req.body)
-  res.send(201, { user })
+  const { token } = await User.signUp(req.body)
+  res.send(201, { token })
 }

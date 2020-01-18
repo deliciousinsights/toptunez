@@ -2,6 +2,7 @@ import errors from 'restify-errors'
 import restify from 'restify'
 import semver from 'semver'
 
+import { requireAuth } from '../util/middlewares.js'
 import Tune from '../db/Tune.js'
 
 const TESTING = process.env.NODE_ENV === 'test'
@@ -53,6 +54,7 @@ export function setupTuneRoutes(server) {
         },
       },
     },
+    requireAuth(),
     createTune
   )
   server.post(
@@ -69,6 +71,7 @@ export function setupTuneRoutes(server) {
         },
       },
     },
+    requireAuth(),
     voteOnTune
   )
 }

@@ -4,6 +4,7 @@ import connection from '../db/connection.js'
 import { createServer } from '../app.js'
 import Tune from '../db/Tune.js'
 import TUNES from '../../fixtures/tunes.js'
+import User from '../db/User.js'
 
 const app = createServer()
 const REGEX_BSON = /^[0-9a-f]{24}$/
@@ -12,9 +13,23 @@ describe('Tunes controller', () => {
   afterAll(() => connection.close())
 
   describe('Tune mutations', () => {
+    let token
+
+    beforeAll(async () => {
+      token = (
+        await User.signUp({
+          email: 'john@smith.org',
+          firstName: 'John',
+          lastName: 'Smith',
+          password: 'secret',
+        })
+      ).token
+    })
+
     it('should allow tune creation', () => {
       return request(app)
         .post(app.router.render('createTune'))
+        .set('Authorization', `JWT ${token}`)
         .send({ artist: 'Dash Berlin', title: 'World Falls Apart' })
         .expect(201)
         .expect('X-Tune-ID', REGEX_BSON)
@@ -28,6 +43,7 @@ describe('Tunes controller', () => {
 
       return request(app)
         .post(app.router.render('voteOnTune', { tuneId: tune.id }))
+        .set('Authorization', `JWT ${token}`)
         .send({ offset: 1, comment: 'This track is dope!' })
         .expect(201)
         .expect('Cache-Control', 'no-cache, no-store, must-revalidate')
