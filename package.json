@@ -90,7 +90,7 @@
   },
   "dependencies": {
     "@saeris/graphql-scalars": "^2.1.1",
-    "apollo-server": "^2.24.0",
+    "apollo-server": "^2.25.3",
     "bunyan": "^1.8.15",
     "chalk": "^4.1.1",
     "dotenv-safe": "^8.2.0",
